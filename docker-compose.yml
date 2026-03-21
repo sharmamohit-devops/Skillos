@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  gap-analysis-app:
+    build: .
+    ports:
+      - "3000:80"      # Frontend accessible at http://localhost:3000
+      - "8000:8000"    # Backend API accessible at http://localhost:8000
+    environment:
+      - NODE_ENV=production
+      - PYTHONPATH=/app/backend
+    volumes:
+      - ./data:/app/backend/data  # Persist data
+      - ./logs:/app/backend/logs  # Persist logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80", "&&", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+networks:
+  default:
+    name: gap-analysis-network

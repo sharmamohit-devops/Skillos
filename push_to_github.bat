@@ -1,9 +1,0 @@
-@echo off
-echo Adding all files to git...
-git add .
-echo Committing changes...
-git commit -m "Ready for Vercel deployment - Fixed build issues and added deployment checklist"
-echo Pushing to GitHub...
-git push origin main
-echo Done!
-pause
