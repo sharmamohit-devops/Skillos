@@ -7,10 +7,71 @@ pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 const resumeExtensions = ["pdf", "doc", "docx"];
 const jdExtensions = ["pdf", "doc", "docx", "txt"];
 
+// MIME types for additional validation
+const resumeMimeTypes = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+];
+
 const getExtension = (fileName: string) => fileName.split(".").pop()?.toLowerCase() ?? "";
 
-export const isResumeFile = (file: File) => resumeExtensions.includes(getExtension(file.name));
+export const isResumeFile = (file: File) => {
+  const extension = getExtension(file.name);
+  const mimeType = file.type;
+  
+  // Check file extension
+  if (!resumeExtensions.includes(extension)) {
+    return false;
+  }
+  
+  // Additional MIME type validation for security
+  if (mimeType && !resumeMimeTypes.includes(mimeType)) {
+    // Allow files without MIME type (some systems don't set it)
+    if (mimeType !== "") {
+      return false;
+    }
+  }
+  
+  // Check file size (max 10MB for resume)
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    return false;
+  }
+  
+  return true;
+};
+
 export const isJDFile = (file: File) => jdExtensions.includes(getExtension(file.name));
+
+export const getFileValidationError = (file: File): string | null => {
+  const extension = getExtension(file.name);
+  const mimeType = file.type;
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  
+  // Check if it's a resume file
+  if (!resumeExtensions.includes(extension)) {
+    return `केवल PDF, DOC, या DOCX फाइलें अपलोड करें। आपकी फाइल: .${extension}`;
+  }
+  
+  // Check MIME type
+  if (mimeType && !resumeMimeTypes.includes(mimeType)) {
+    return "फाइल का प्रकार सही नहीं है। कृपया वैध resume फाइल अपलोड करें।";
+  }
+  
+  // Check file size
+  if (file.size > maxSize) {
+    const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    return `फाइल का साइज़ बहुत बड़ा है (${sizeMB}MB)। कृपया 10MB से छोटी फाइल अपलोड करें।`;
+  }
+  
+  // Check if file is empty
+  if (file.size === 0) {
+    return "फाइल खाली है। कृपया वैध resume फाइल अपलोड करें।";
+  }
+  
+  return null;
+};
 
 export async function extractTextFromFile(file: File): Promise<string> {
   const extension = getExtension(file.name);

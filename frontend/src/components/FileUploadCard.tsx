@@ -1,9 +1,9 @@
 import { useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Upload, FileText, X, CheckCircle } from "lucide-react";
+import { Upload, FileText, X, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { isResumeFile } from "@/lib/extractText";
+import { isResumeFile, getFileValidationError } from "@/lib/extractText";
 
 interface FileUploadCardProps {
   label: string;
@@ -14,6 +14,7 @@ interface FileUploadCardProps {
 
 const FileUploadCard = ({ label, description, file, onFileChange }: FileUploadCardProps) => {
   const [isDragging, setIsDragging] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -21,14 +22,42 @@ const FileUploadCard = ({ label, description, file, onFileChange }: FileUploadCa
     (selected: File | null | undefined) => {
       if (!selected) return;
 
-      if (!isResumeFile(selected)) {
+      // Enhanced validation with detailed error messages
+      const validationError = getFileValidationError(selected);
+      if (validationError) {
+        setHasError(true);
         toast({
-          title: "Invalid resume file",
-          description: "Resume ke liye sirf PDF, DOC, ya DOCX file upload karo.",
+          title: "❌ Invalid Resume File",
+          description: validationError,
           variant: "destructive",
         });
+        
+        // Clear error after 3 seconds
+        setTimeout(() => setHasError(false), 3000);
         return;
       }
+
+      // Double check with isResumeFile for backward compatibility
+      if (!isResumeFile(selected)) {
+        setHasError(true);
+        toast({
+          title: "❌ Resume File Required",
+          description: "कृपया केवल PDF, DOC, या DOCX resume फाइल अपलोड करें।",
+          variant: "destructive",
+        });
+        
+        // Clear error after 3 seconds
+        setTimeout(() => setHasError(false), 3000);
+        return;
+      }
+
+      // Success
+      setHasError(false);
+      toast({
+        title: "✅ Resume Uploaded Successfully",
+        description: `${selected.name} successfully uploaded!`,
+        variant: "default",
+      });
 
       onFileChange(selected);
     },
@@ -49,9 +78,20 @@ const FileUploadCard = ({ label, description, file, onFileChange }: FileUploadCa
     (e: React.DragEvent) => {
       e.preventDefault();
       setIsDragging(false);
-      handleValidFile(e.dataTransfer.files[0]);
+      
+      const droppedFile = e.dataTransfer.files[0];
+      if (!droppedFile) {
+        toast({
+          title: "❌ No File Detected",
+          description: "कृपया एक वैध फाइल drop करें।",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      handleValidFile(droppedFile);
     },
-    [handleValidFile]
+    [handleValidFile, toast]
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,7 +105,10 @@ const FileUploadCard = ({ label, description, file, onFileChange }: FileUploadCa
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         "rounded-[1.75rem] border transition-all duration-300 glow-card",
-        isDragging ? "border-accent bg-accent/5 scale-[1.01]" : file ? "border-success/30 bg-success/5" : "border-border bg-card hover:border-accent/30"
+        isDragging ? "border-accent bg-accent/5 scale-[1.01]" : 
+        hasError ? "border-destructive/50 bg-destructive/5" :
+        file ? "border-success/30 bg-success/5" : 
+        "border-border bg-card hover:border-accent/30"
       )}
       style={{ boxShadow: "var(--shadow-card)" }}
       onDragOver={handleDragOver}
@@ -75,14 +118,24 @@ const FileUploadCard = ({ label, description, file, onFileChange }: FileUploadCa
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf,.doc,.docx"
+        accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
         onChange={handleInputChange}
       />
 
       <div className="flex flex-col items-center text-center gap-4 p-8 relative z-10">
         <AnimatePresence mode="wait">
-          {file ? (
+          {hasError ? (
+            <motion.div
+              key="error"
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center"
+            >
+              <AlertCircle className="w-7 h-7 text-destructive" />
+            </motion.div>
+          ) : file ? (
             <motion.div
               key="done"
               initial={{ scale: 0.85, opacity: 0 }}
@@ -136,7 +189,7 @@ const FileUploadCard = ({ label, description, file, onFileChange }: FileUploadCa
               Choose Resume File
             </button>
             <p className="text-xs text-muted-foreground font-body">
-              Drag & drop supported · PDF / DOC / DOCX
+              Drag & drop supported · Only PDF / DOC / DOCX · Max 10MB
             </p>
           </>
         )}
