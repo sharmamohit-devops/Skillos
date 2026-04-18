@@ -1,25 +1,32 @@
-# 🎯 GapLens - AI-Powered Resume & Job Matching Platform
+# 🎯 SkillOS - Virtual HR Simulation Platform
 
-> **AI Hackathon Project** - Intelligent skill gap analysis and career roadmap generation
+> **AI Hackathon Project** - Virtual HR panel with 4 specialized AI agents for resume analysis
 
 ## 📁 Project Structure
 
 ```
-Gap-Analysis/
+SkillOS/
 ├── frontend/              # React + TypeScript (15,000+ lines)
 │   ├── src/
 │   │   ├── components/   # 80+ React components
-│   │   ├── pages/        # 4 main pages
+│   │   ├── pages/        # 10+ main pages including Virtual HR
 │   │   ├── lib/          # Utilities & text extraction
 │   │   └── types/        # TypeScript interfaces
 │   └── package.json      # 80+ dependencies
 │
 ├── python-backend/       # FastAPI + ML (5,000+ lines)
+│   ├── agents/          # 4 Virtual HR AI agents
+│   │   ├── ats_agent.py        # ATLAS - ATS System
+│   │   ├── hr_agent.py         # PRIYA - HR Screener  
+│   │   ├── startup_agent.py    # ALEX - Startup HM
+│   │   └── tech_agent.py       # DR. CHEN - Technical Lead
 │   ├── models/          # ML models & analysis
 │   │   ├── skill_extractor.py      # 774 lines
 │   │   ├── adaptive_pathfinder.py  # 500+ lines
 │   │   ├── resume_parser.py
 │   │   └── jd_parser.py
+│   ├── services/        # Agent orchestration
+│   │   └── agent_orchestrator.py
 │   ├── data/            # Training datasets
 │   └── main.py          # FastAPI app (300+ lines)
 │
@@ -34,8 +41,8 @@ Gap-Analysis/
 
 ### Option 1: Docker Setup (Recommended)
 ```bash
-git clone https://github.com/sharmamohit-devops/Gap-Analysis.git
-cd Gap-Analysis
+git clone https://github.com/sharmamohit-devops/SkillOS.git
+cd SkillOS
 docker-compose up --build
 ```
 
@@ -62,37 +69,51 @@ npm run dev
 
 ---
 
-## 🎯 What is GapLens?
+## 🎯 What is SkillOS?
 
-**GapLens** is an AI-powered platform that revolutionizes the job application process by providing intelligent analysis of the gap between candidate skills and job requirements.
+**SkillOS** is a Virtual HR Simulation Platform that revolutionizes resume evaluation through 4 specialized AI agents, each providing unique professional perspectives on candidate assessment.
+
+### 🤖 Virtual HR Panel
+
+#### Meet Your AI Agents:
+- **🤖 ATLAS** - ATS System Agent (Resume format & keyword screening)
+- **👩‍💼 PRIYA** - HR Screener Agent (Cultural fit & experience evaluation)  
+- **🚀 ALEX** - Startup Hiring Manager (Execution potential & adaptability)
+- **👨‍💻 DR. CHEN** - Technical Lead (Technical skills & depth assessment)
 
 ### 🔍 Core Features
 
-#### 1. **Smart Resume Analysis**
-- 📄 Upload PDF/DOC/DOCX resume files
-- 🤖 AI-powered text extraction and parsing
-- 📊 Skill identification and categorization
-- 🎯 Experience level assessment
+#### 1. **Virtual HR Comments** (Resume-Only Analysis)
+- 📄 Upload resume and get instant feedback from 4 AI agents
+- 🤖 Each agent provides specialized perspective
+- 📊 No job description needed - general resume review
+- 🎯 Comprehensive feedback on resume quality
 
-#### 2. **Job Description Matching**
-- 📝 Paste or upload job descriptions
-- 🔍 Requirement extraction and analysis
-- 🎯 Skill matching algorithms
-- 📈 Compatibility scoring
+#### 2. **Resume-JD Match Analysis** 
+- 📝 Upload resume + job description for detailed matching
+- 🔍 Skill gap analysis and compatibility scoring
+- 📈 Personalized learning roadmap generation
+- ⏱️ Time commitment planning for skill development
 
-#### 3. **Intelligent Gap Analysis**
+#### 3. **Virtual HR Simulation**
+- 🎭 4 distinct AI agent personalities
+- 💬 Realistic HR panel discussion simulation
+- 🎯 Multi-perspective candidate evaluation
+- 📊 Consensus-based final verdict
+
+#### 4. **Intelligent Gap Analysis**
 - 🧠 AI-powered skill gap identification
 - 📊 Visual gap analysis with interactive charts
 - 🎯 Priority-based skill recommendations
 - 📈 Match percentage calculation
 
-#### 4. **Personalized Learning Roadmap**
+#### 5. **Personalized Learning Roadmap**
 - 🛣️ Animated roadmap visualization
 - 📚 Skill-specific learning resources
 - ⏱️ Time commitment estimates
 - 🎯 Milestone tracking system
 
-#### 5. **Advanced Analytics**
+#### 6. **Advanced Analytics**
 - 📊 Interactive charts and visualizations
 - 📈 Progress tracking
 - 📋 Exportable PDF reports
@@ -127,7 +148,18 @@ npm run dev
 
 ## 🎨 Key Innovations
 
-### 1. **AI-Powered Analysis Engine**
+### 1. **Virtual HR Agent System**
+```python
+# 4 specialized AI agents with unique personalities
+agents = {
+    "ATLAS": ATSAgent(),      # Resume format & ATS compatibility
+    "PRIYA": HRAgent(),       # Cultural fit & soft skills
+    "ALEX": StartupAgent(),   # Adaptability & execution
+    "DR_CHEN": TechAgent()    # Technical depth & expertise
+}
+```
+
+### 2. **AI-Powered Analysis Engine**
 ```python
 # Advanced NLP for skill extraction
 skills = extract_skills_with_ml(resume_text)
@@ -135,19 +167,19 @@ requirements = parse_job_requirements(jd_text)
 gap_analysis = calculate_skill_gaps(skills, requirements)
 ```
 
-### 2. **Interactive Roadmap Visualization**
+### 3. **Interactive Roadmap Visualization**
 - Curved road animations with realistic physics
 - Car following path with banking effects
 - Milestone markers with progress tracking
 - Landscape elements for immersion
 
-### 3. **Smart File Validation**
+### 4. **Smart File Validation**
 - Multi-layer validation (extension + MIME type)
 - File size limits and security checks
 - User-friendly error messages
 - Visual feedback system
 
-### 4. **Responsive Design**
+### 5. **Responsive Design**
 - Mobile-first approach
 - Adaptive layouts for all screen sizes
 - Touch-friendly interactions
@@ -157,22 +189,28 @@ gap_analysis = calculate_skill_gaps(skills, requirements)
 
 ## 📊 Demo Workflow
 
-### Step 1: Upload Resume
+### Step 1: Choose Analysis Type
+```
+Virtual HR Comments → Resume only → 4 agent feedback
+Resume-JD Match → Resume + JD → Gap analysis + roadmap
+```
+
+### Step 2: Upload Files
 ```
 User uploads PDF/DOCX → AI extracts text → Skills identified
 ```
 
-### Step 2: Add Job Description
+### Step 3: Add Job Description (if Resume-JD Match)
 ```
 Paste JD text → Requirements parsed → Skills categorized
 ```
 
-### Step 3: AI Analysis
+### Step 4: Virtual HR Simulation
 ```
-ML algorithms compare → Gap analysis → Scoring calculation
+4 AI agents analyze → Individual verdicts → Consensus building
 ```
 
-### Step 4: Results & Roadmap
+### Step 5: Results & Roadmap
 ```
 Visual dashboard → Learning path → Export report
 ```
@@ -241,7 +279,8 @@ VITE_API_URL=http://localhost:8000
 ## 🏆 Judging Criteria Alignment
 
 ### **Innovation & Creativity**
-- ✅ AI-powered skill gap analysis
+- ✅ Virtual HR simulation with 4 AI agent personalities
+- ✅ Separated feature workflows (Virtual HR vs Resume-JD)
 - ✅ Interactive roadmap visualization
 - ✅ Smart file validation system
 - ✅ Personalized learning paths
@@ -274,11 +313,13 @@ VITE_API_URL=http://localhost:8000
 
 ## 🚀 Future Enhancements
 
-- 🤖 Advanced AI models for better accuracy
-- 🔗 Integration with job portals
+- 🤖 More specialized AI agent roles (Legal, Finance, etc.)
+- 🎥 Video interview simulation with agents
+- 🔗 Integration with job portals and ATS systems
 - 📱 Mobile app development
 - 🌐 Multi-language support
 - 📊 Advanced analytics dashboard
+- 🎯 Industry-specific agent training
 
 ---
 
@@ -309,4 +350,4 @@ This project is developed for educational and hackathon purposes.
 
 **Built with ❤️ for the AI Hackathon 2024**
 
-*Transforming career development through intelligent technology*
+*Transforming career development through Virtual HR simulation*
