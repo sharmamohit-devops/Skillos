@@ -35,11 +35,12 @@ const depthMeta = (d: string) =>
     : d === "intermediate" ? { label: "Intermediate", bg: "bg-warning/8", text: "text-warning" }
     : { label: "Beginner", bg: "bg-success/8", text: "text-success" };
 
-const getActionText = (gap: GapIntelligence) => {
+const getActionText = (gap: any) => {
+  if (gap.description) return gap.description;
   if (gap.expected_depth === "advanced")
     return `Build deep expertise in ${gap.skill}. Work on real projects and gain production-level experience.`;
   if (gap.expected_depth === "intermediate") {
-    const deps = gap.dependency_skills.length > 0 ? `Integrate with ${gap.dependency_skills.join(" & ")}` : "Do hands-on practice";
+    const deps = (gap.dependency_skills || []).length > 0 ? `Integrate with ${gap.dependency_skills.join(" & ")}` : "Do hands-on practice";
     return `Learn ${gap.skill} fundamentals, build small projects, and ${deps.toLowerCase()}.`;
   }
   return `Get a basic overview of ${gap.skill} — read docs, follow a tutorial, and try it in a simple project.`;
@@ -107,16 +108,19 @@ const AnimatedRoad = ({ containerRef }: { containerRef: React.RefObject<HTMLDivE
 };
 
 /* ── Milestone Card ── */
-const MilestoneCard = ({ gap, index, total, hours, weeks, durationLabel, cumulativeWeeks }: {
-  gap: GapIntelligence; index: number; total: number;
+const MilestoneCard = ({ gap, index, total, hours, weeks, durationLabel, cumulativeWeeks, resources: customResources, practiceProjects }: {
+  gap: any; index: number; total: number;
   hours: number; weeks: number; durationLabel: string; cumulativeWeeks: number;
+  resources?: string[]; practiceProjects?: string[];
 }) => {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, margin: "-50px" });
   const pri = priorityMeta(gap.importance_level);
   const depth = depthMeta(gap.expected_depth);
-  const resources = getResources(gap.skill);
+  const resources = customResources && customResources.length > 0 
+    ? customResources.map(r => ({ type: "Resource", icon: <BookOpen className="h-4 w-4" />, url: r, color: "bg-primary/10 text-primary" }))
+    : getResources(gap.skill);
   const Icon = pri.icon;
 
   return (
@@ -193,12 +197,12 @@ const MilestoneCard = ({ gap, index, total, hours, weeks, durationLabel, cumulat
                 {/* Meta */}
                 <div className="flex flex-wrap gap-2">
                   <span className="inline-flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm font-body font-medium text-foreground">
-                    <GraduationCap className="h-4 w-4 text-muted-foreground" /> {gap.skill_type}
+                    <GraduationCap className="h-4 w-4 text-muted-foreground" /> {gap.skill_type || "Skill"}
                   </span>
                   <span className="inline-flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-sm font-body font-medium text-foreground">
-                    Gap: {gap.related_resume_gap}
+                    Gap: {gap.related_resume_gap || "Required Skill"}
                   </span>
-                  {gap.dependency_skills.length > 0 && (
+                  {(gap.dependency_skills || []).length > 0 && (
                     <span className="inline-flex items-center gap-2 rounded-lg bg-accent/8 border border-accent/15 px-3 py-1.5 text-sm font-body font-medium text-accent">
                       Prerequisites: {gap.dependency_skills.join(", ")}
                     </span>
@@ -215,10 +219,10 @@ const MilestoneCard = ({ gap, index, total, hours, weeks, durationLabel, cumulat
 
                 {/* Resources */}
                 <div>
-                  <p className="text-sm font-display font-semibold text-foreground mb-3">Free Learning Resources</p>
+                  <p className="text-sm font-display font-semibold text-foreground mb-3">Learning Resources</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {resources.map(r => (
-                      <a key={r.type} href={r.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                    {resources.map((r: any, idx: number) => (
+                      <a key={`${r.type}-${idx}`} href={r.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
                         className="flex items-center gap-3 rounded-xl border border-border px-4 py-3 text-sm font-body font-medium text-foreground hover:border-accent/30 hover:bg-accent/5 transition-all group/link"
                       >
                         <span className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${r.color}`}>{r.icon}</span>
@@ -228,6 +232,21 @@ const MilestoneCard = ({ gap, index, total, hours, weeks, durationLabel, cumulat
                     ))}
                   </div>
                 </div>
+
+                {/* Practice Projects */}
+                {practiceProjects && practiceProjects.length > 0 && (
+                  <div>
+                    <p className="text-sm font-display font-semibold text-foreground mb-3">Practice Projects</p>
+                    <div className="space-y-2">
+                      {practiceProjects.map((p, idx) => (
+                        <div key={idx} className="flex items-center gap-3 rounded-xl bg-success/5 border border-success/10 px-4 py-3 text-sm font-body text-foreground">
+                          <Rocket className="h-4 w-4 text-success shrink-0" />
+                          {p}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
@@ -300,7 +319,31 @@ const Roadmap = () => {
     return (order[a.importance_level] ?? 3) - (order[b.importance_level] ?? 3);
   });
 
-  const timeline = buildTimeline(sortedGaps, weeklyHours);
+  const timeline = data.learning_pathway && data.learning_pathway.length > 0
+    ? {
+        items: data.learning_pathway.map(step => ({
+          hours: step.estimated_hours,
+          weeks: step.time_commitment.estimated_weeks,
+          durationLabel: `~${step.time_commitment.estimated_weeks} weeks`,
+          cumulativeWeeks: 0, // Will calculate below if needed
+        })),
+        totalHours: data.learning_pathway.reduce((sum, s) => sum + s.estimated_hours, 0),
+        totalWeeks: data.learning_pathway.reduce((sum, s) => sum + s.time_commitment.estimated_weeks, 0),
+      }
+    : buildTimeline(sortedGaps, weeklyHours);
+
+  // If using backend pathway, calculate cumulative weeks
+  if (data.learning_pathway && data.learning_pathway.length > 0) {
+    let cumulative = 0;
+    timeline.items.forEach(item => {
+      cumulative += item.weeks;
+      item.cumulativeWeeks = cumulative;
+    });
+  }
+
+  const milestones = data.learning_pathway && data.learning_pathway.length > 0
+    ? data.learning_pathway
+    : sortedGaps;
 
   return (
     <div className="min-h-screen bg-background dot-pattern">
@@ -348,7 +391,7 @@ const Roadmap = () => {
 
         {/* ── THE ROAD ── */}
         <div className="relative overflow-hidden" ref={roadRef}>
-          <RealisticAnimatedRoad containerRef={roadRef} milestoneCount={sortedGaps.length} />
+          <RealisticAnimatedRoad containerRef={roadRef} milestoneCount={milestones.length} />
 
           {/* START */}
           <motion.div
@@ -365,7 +408,7 @@ const Roadmap = () => {
 
           {/* Horizontal Milestone Cards */}
           <div className="milestone-container relative z-20 space-y-16">
-            {sortedGaps.map((gap, i) => (
+            {milestones.map((gap, i) => (
               <motion.div
                 key={`${gap.skill}-${i}`}
                 initial={{ opacity: 0, x: i % 2 === 0 ? -100 : 100 }}
@@ -387,11 +430,13 @@ const Roadmap = () => {
                   <MilestoneCard
                     gap={gap}
                     index={i}
-                    total={sortedGaps.length}
+                    total={milestones.length}
                     hours={timeline.items[i]?.hours ?? 0}
                     weeks={timeline.items[i]?.weeks ?? 0}
                     durationLabel={timeline.items[i]?.durationLabel ?? ""}
                     cumulativeWeeks={timeline.items[i]?.cumulativeWeeks ?? 0}
+                    resources={gap.learning_resources}
+                    practiceProjects={gap.practice_projects}
                   />
                 </div>
               </motion.div>

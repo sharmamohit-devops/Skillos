@@ -375,14 +375,6 @@ class SkillExtractor:
             risk_factors.append("No recent experience mentioned - skills may be outdated")
         
         return risk_factors
-                
-                # Check synonyms
-                if skill in self.skill_synonyms:
-                    for synonym in self.skill_synonyms[skill]:
-                        if synonym.lower() in text_lower:
-                            extracted_skills.add(skill)
-        
-        # Extract using regex patterns for common skill formats
         patterns = [
             r'\b[A-Z][a-z]+(?:\.[a-z]+)+\b',  # Framework patterns like React.js
             r'\b[A-Z]{2,}\b',  # Acronyms like AWS, API

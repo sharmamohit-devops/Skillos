@@ -27,9 +27,9 @@ const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="font-body text-[2.5rem] sm:text-5xl lg:text-6xl font-bold text-foreground tracking-tight leading-[1.15]"
         >
-          Smart Career <span className="text-gradient-orange font-display italic">Gap Analysis</span>{" "}
+          Virtual <span className="text-gradient-orange font-display italic">HR Room</span>{" "}
           <span className="relative inline-block font-display italic font-bold">
-            Platform
+            Simulation
             <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none">
               <path d="M2 5 C40 2, 80 2, 120 4 S170 7, 198 3" stroke="hsl(var(--teal))" strokeWidth="2.5" strokeLinecap="round" fill="none" />
             </svg>
@@ -41,9 +41,9 @@ const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-6 text-base sm:text-lg text-muted-foreground font-body max-w-lg mx-auto leading-relaxed"
+          className="mt-6 text-base sm:text-lg text-muted-foreground font-body max-w-2xl mx-auto leading-relaxed"
         >
-          AI-powered skill matching and personalized learning roadmaps to bridge your career gaps.
+          4 AI agents simulate a real hiring panel. Get evaluated by ATS, HR, Startup, and Technical perspectives — then receive a personalized learning roadmap.
         </motion.p>
 
         {/* CTA */}
@@ -56,9 +56,9 @@ const LandingHero = ({ onGetStarted }: LandingHeroProps) => {
           <button
             onClick={onGetStarted}
             className="px-12 py-4 text-base font-body font-semibold rounded-2xl text-primary-foreground transition-all duration-300 group hover-lift shimmer-btn bg-gradient-to-r from-primary via-purple-600 to-primary shadow-glow focus-ring"
-            aria-label="Start checking your resume"
+            aria-label="Start virtual HR simulation"
           >
-            Check Resume
+            Enter HR Room
             <ArrowDown className="w-4 h-4 ml-2 inline group-hover:translate-y-0.5 transition-transform" />
           </button>
         </motion.div>

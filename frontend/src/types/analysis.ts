@@ -7,9 +7,64 @@ export interface GapIntelligence {
   expected_depth: "basic" | "intermediate" | "advanced";
 }
 
+export interface PathwayStep {
+  sequence: number;
+  skill: string;
+  title: string;
+  description: string;
+  importance_level: "High" | "Medium" | "Low";
+  expected_depth: "basic" | "intermediate" | "advanced";
+  estimated_hours: number;
+  time_commitment: {
+    total_hours: number;
+    estimated_weeks: number;
+    hours_per_week: number;
+    daily_commitment: string;
+  };
+  difficulty: "beginner" | "intermediate" | "advanced";
+  prerequisites: string[];
+  learning_resources: string[];
+  practice_projects: string[];
+  assessment_criteria: string[];
+  status: "not_started" | "in_progress" | "completed";
+}
+
 export interface SkillWeight {
   skill: string;
   importance: "High" | "Medium" | "Low";
+}
+
+export interface AgentReport {
+  agent: string;
+  name: string;
+  role: string;
+  verdict: string;
+  confidence: number;
+  comment?: string;
+  // ATS specific
+  keyword_score?: number;
+  format_score?: number;
+  missing_keywords?: string[];
+  rejection_reasons?: string[];
+  pass_reasons?: string[];
+  // HR specific
+  culture_fit_score?: number;
+  progression_score?: number;
+  soft_skill_score?: number;
+  red_flags?: string[];
+  green_flags?: string[];
+  // Startup specific
+  execution_score?: number;
+  breadth_score?: number;
+  startup_fit_score?: number;
+  excited_about?: string[];
+  concerns?: string[];
+  // Tech specific
+  depth_score?: number;
+  stack_score?: number;
+  complexity_score?: number;
+  impressed_by?: string[];
+  technical_comment?: string;
 }
 
 export interface AnalysisResult {
@@ -51,6 +106,18 @@ export interface AnalysisResult {
     suggested_project_types: string[];
     toolchain_recommendations: string[];
   };
+  // SkillOS Virtual HR Simulation
+  agent_reports?: Record<string, AgentReport>;
+  overall_score?: number;
+  shortlist_probability?: number;
+  verdict?: string;
+  panel_consensus?: string;
+  // MirrorFish metadata
+  simulation_source?: string;
+  mirrorfish_status?: string;
+  // Python backend generated pathway
+  learning_pathway?: PathwayStep[];
+  reasoning_trace?: string[];
 }
 
 export interface AdvancedAnalysisResult {

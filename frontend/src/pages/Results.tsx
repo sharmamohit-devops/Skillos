@@ -3,13 +3,14 @@ import { motion } from "framer-motion";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, XCircle, AlertCircle,
   TrendingUp, TrendingDown, ShieldAlert, Target, Sparkles, Award,
-  Users, Briefcase, Star, Zap, BarChart3,
+  Users, Briefcase, Star, Zap, BarChart3, Bot, Brain,
 } from "lucide-react";
 import type { AnalysisResult } from "@/types/analysis";
 import ScoreRing from "@/components/ScoreRing";
 import ExportPdfButton from "@/components/results/ExportPdfButton";
 import AdvancedAnalysis from "@/components/AdvancedAnalysis";
 import EnhancedNavbar from "@/components/EnhancedNavbar";
+import AgentCard from "@/components/simulation/AgentCard";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -82,6 +83,11 @@ const Results = () => {
               className="inline-flex items-center gap-2 rounded-full bg-accent/8 border border-accent/15 px-4 py-1.5 text-xs font-body text-accent"
             >
               <Sparkles className="h-3.5 w-3.5" /> AI-Powered Analysis
+              {data.simulation_source === "mirrorfish" && (
+                <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 text-[10px] font-semibold">
+                  MirrorFish
+                </span>
+              )}
             </motion.div>
 
             <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground leading-tight">
@@ -116,6 +122,77 @@ const Results = () => {
             </motion.div>
           </div>
         </motion.section>
+
+        {/* Rainbow divider */}
+        <div className="rainbow-bar" />
+
+        {/* ══════ VIRTUAL HR SIMULATION ══════ */}
+        {data.agent_reports && (
+          <motion.section {...fade(0.3)} className="space-y-6">
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/8 border border-primary/15 px-4 py-1.5 text-xs font-body text-primary">
+                <Brain className="h-3.5 w-3.5" /> SkillOS Virtual HR Room
+                {data.simulation_source === "mirrorfish" && (
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 text-[10px] font-semibold">
+                    MirrorFish
+                  </span>
+                )}
+              </div>
+              <h2 className="font-display text-2xl font-bold text-foreground">
+                4 AI Agents Evaluated Your Profile
+              </h2>
+              <p className="text-muted-foreground font-body text-sm max-w-2xl mx-auto">
+                Our virtual HR panel simulated a real hiring process. Each agent brings their unique perspective and evaluation criteria.
+              </p>
+              
+              {/* Overall Verdict */}
+              <div className="flex items-center justify-center gap-6 pt-2">
+                <div className="text-center">
+                  <ScoreRing score={data.overall_score || 70} label="Panel Score" size={100} />
+                </div>
+                <div className="text-center">
+                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold border ${
+                    data.verdict === "STRONG_CANDIDATE" ? "bg-success/10 border-success/20 text-success" :
+                    data.verdict === "CANDIDATE" ? "bg-warning/10 border-warning/20 text-warning" :
+                    "bg-destructive/10 border-destructive/20 text-destructive"
+                  }`}>
+                    {data.verdict === "STRONG_CANDIDATE" ? <CheckCircle2 className="h-4 w-4" /> :
+                     data.verdict === "CANDIDATE" ? <AlertCircle className="h-4 w-4" /> :
+                     <XCircle className="h-4 w-4" />}
+                    {data.verdict?.replace("_", " ") || "CANDIDATE"}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 font-body">
+                    {data.panel_consensus}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Agent Cards Grid */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {Object.values(data.agent_reports).map((report: any, index) => (
+                <AgentCard 
+                  key={report.agent} 
+                  report={report} 
+                  delay={0.1 + (index * 0.1)} 
+                />
+              ))}
+            </div>
+
+            {/* Simulation Metadata */}
+            {(data.simulation_source || data.mirrorfish_status) && (
+              <div className="text-center">
+                <div className="inline-flex items-center gap-2 rounded-full bg-muted/30 border border-border px-3 py-1.5 text-xs font-body text-muted-foreground">
+                  <Bot className="h-3 w-3" />
+                  {data.simulation_source === "mirrorfish" ? "Powered by MirrorFish AI" : "ML-Based Simulation"}
+                  {data.mirrorfish_status && data.mirrorfish_status !== "success" && (
+                    <span className="text-warning">({data.mirrorfish_status})</span>
+                  )}
+                </div>
+              </div>
+            )}
+          </motion.section>
+        )}
 
         {/* Rainbow divider */}
         <div className="rainbow-bar" />

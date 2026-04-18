@@ -2,6 +2,34 @@
 
 > **AI Hackathon Project** - Intelligent skill gap analysis and career roadmap generation
 
+## 📁 Project Structure
+
+```
+Gap-Analysis/
+├── frontend/              # React + TypeScript (15,000+ lines)
+│   ├── src/
+│   │   ├── components/   # 80+ React components
+│   │   ├── pages/        # 4 main pages
+│   │   ├── lib/          # Utilities & text extraction
+│   │   └── types/        # TypeScript interfaces
+│   └── package.json      # 80+ dependencies
+│
+├── python-backend/       # FastAPI + ML (5,000+ lines)
+│   ├── models/          # ML models & analysis
+│   │   ├── skill_extractor.py      # 774 lines
+│   │   ├── adaptive_pathfinder.py  # 500+ lines
+│   │   ├── resume_parser.py
+│   │   └── jd_parser.py
+│   ├── data/            # Training datasets
+│   └── main.py          # FastAPI app (300+ lines)
+│
+├── docker-compose.yml   # Container orchestration
+├── Dockerfile          # Multi-stage build
+└── README.md           # This file
+```
+
+---
+
 ## 🚀 Quick Start for Judges
 
 ### Option 1: Docker Setup (Recommended)
