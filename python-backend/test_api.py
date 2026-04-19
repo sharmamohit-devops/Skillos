@@ -6,6 +6,7 @@ Simple test script to verify the API is working
 import requests
 import json
 
+
 def test_health():
     """Test health endpoint"""
     try:
@@ -16,6 +17,7 @@ def test_health():
     except Exception as e:
         print(f"Health check failed: {e}")
         return False
+
 
 def test_analysis():
     """Test analysis endpoint with sample data"""
@@ -40,48 +42,51 @@ def test_analysis():
         - Agile/Scrum methodology
         
         Tech Stack: Python, React, Node.js, PostgreSQL, Docker, AWS
-        """
+        """,
     }
-    
+
     try:
         response = requests.post(
             "http://localhost:8000/analyze",
             json=sample_data,
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
-        
+
         print(f"Analysis test: {response.status_code}")
-        
+
         if response.status_code == 200:
             result = response.json()
             print("✅ Analysis successful!")
             print(f"Candidate: {result['candidate_profile']['name']}")
             print(f"Role: {result['job_analysis']['role']}")
-            print(f"Skill match: {result['skill_analysis']['skill_match_percentage']:.1f}%")
+            print(
+                f"Skill match: {result['skill_analysis']['skill_match_percentage']:.1f}%"
+            )
             print(f"Missing skills: {len(result['skill_analysis']['missing_skills'])}")
             print(f"Learning modules: {len(result.get('learning_pathway', []))}")
             return True
         else:
             print(f"❌ Analysis failed: {response.text}")
             return False
-            
+
     except Exception as e:
         print(f"Analysis test failed: {e}")
         return False
 
+
 if __name__ == "__main__":
     print("Testing AI-Adaptive Onboarding Engine API")
     print("=" * 50)
-    
+
     # Test health
     if test_health():
         print("✅ Health check passed")
     else:
         print("❌ Health check failed")
         exit(1)
-    
+
     print()
-    
+
     # Test analysis
     if test_analysis():
         print("✅ Analysis test passed")
