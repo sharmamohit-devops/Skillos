@@ -1,6 +1,6 @@
 # 🎯 SkillOS - Virtual HR Simulation Platform
 
-> **AI Hackathon Project** - Virtual HR panel with 4 specialized AI agents for resume analysis
+> **Hackcera 5.0 Project** - Virtual HR panel with 4 specialized AI agents for resume analysis
 
 ## 📁 Project Structure
 
@@ -30,8 +30,6 @@ SkillOS/
 │   ├── data/            # Training datasets
 │   └── main.py          # FastAPI app (300+ lines)
 │
-├── docker-compose.yml   # Container orchestration
-├── Dockerfile          # Multi-stage build
 └── README.md           # This file
 ```
 
@@ -39,15 +37,12 @@ SkillOS/
 
 ## 🚀 Quick Start for Judges
 
-### Option 1: Docker Setup (Recommended)
+### Setup Instructions
 ```bash
+# Clone the repository
 git clone https://github.com/sharmamohit-devops/SkillOS.git
 cd SkillOS
-docker-compose up --build
-```
 
-### Option 2: Manual Setup
-```bash
 # Backend Setup
 cd python-backend
 python -m venv venv
@@ -63,7 +58,7 @@ npm run dev
 ```
 
 ### 🌐 Access Points
-- **Frontend:** http://localhost:3000 (Docker) or http://localhost:5173 (Manual)
+- **Frontend:** http://localhost:5173
 - **Backend API:** http://localhost:8000
 - **API Documentation:** http://localhost:8000/docs
 
@@ -165,9 +160,6 @@ Upload Resume → Get Feedback → Improve Skills → Re-analyze → Track Progr
 ### **Infrastructure & DevOps**
 | Technology | Purpose |
 |------------|---------|
-| **Docker** | Containerization for consistent environments |
-| **Docker Compose** | Multi-container orchestration |
-| **Nginx** | Reverse proxy and load balancing |
 | **GitHub Actions** | CI/CD pipeline (planned) |
 
 ### **Development Tools**
@@ -703,9 +695,7 @@ if language != 'en':
 - **Scikit-learn** for ML algorithms
 
 ### Infrastructure
-- **Docker** containerization
-- **Nginx** reverse proxy
-- **Multi-stage builds** for optimization
+- **GitHub Actions** for CI/CD (planned)
 - **Health checks** and monitoring
 
 ---
@@ -852,8 +842,8 @@ VITE_API_URL=http://localhost:8000
 ### **Technical Excellence**
 - ✅ Modern tech stack (React 18, FastAPI)
 - ✅ TypeScript for type safety
-- ✅ Docker containerization
 - ✅ Comprehensive testing
+- ✅ Clean architecture
 
 ### **User Experience**
 - ✅ Intuitive interface design
@@ -889,7 +879,7 @@ VITE_API_URL=http://localhost:8000
 
 ## 🤝 Contributing
 
-This project was built for the AI Hackathon. For any questions or suggestions:
+This project was built for Hackcera 5.0. For any questions or suggestions:
 
 1. Check the API documentation at `/docs`
 2. Review the code structure
@@ -906,11 +896,12 @@ This project is developed for educational and hackathon purposes.
 
 ## 🎉 Acknowledgments
 
-- **AI Hackathon** organizers for the opportunity
+- **Hackcera 5.0** organizers for the opportunity
 - **Open source community** for amazing tools
 - **Modern web technologies** that made this possible
 
 ---
 
+**Built with ❤️ for Hackcera 5.0**
 
 *Transforming career development through Virtual HR simulation*
