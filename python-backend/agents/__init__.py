@@ -9,4 +9,4 @@ from .hr_agent import HRAgent
 from .startup_agent import StartupAgent
 from .tech_agent import TechAgent
 
-__all__ = ['BaseAgent', 'ATSAgent', 'HRAgent', 'StartupAgent', 'TechAgent']
+__all__ = ["BaseAgent", "ATSAgent", "HRAgent", "StartupAgent", "TechAgent"]
