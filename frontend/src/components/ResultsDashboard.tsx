@@ -21,33 +21,23 @@ const ResultsDashboard = ({ data }: { data: AnalysisResult }) => {
       <motion.div
         initial={{ opacity: 0, y: 18 }}
         animate={{ opacity: 1, y: 0 }}
-        className="overflow-hidden rounded-[2rem] border border-border p-8"
+        className="overflow-hidden rounded-2xl border border-border p-5"
         style={{ background: "var(--gradient-hero)", boxShadow: "var(--shadow-elevated)" }}
       >
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-4 py-2 text-xs uppercase tracking-[0.24em] text-primary-foreground/90">
-              <Sparkles className="h-3.5 w-3.5" /> Premium Match Intelligence
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex-1">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-primary-foreground/90">
+              <Sparkles className="h-3 w-3" /> Analysis Result
             </div>
-            <h2 className="font-display text-3xl font-bold text-primary-foreground md:text-4xl">
-              {data.candidate_profile.name || "Candidate"} × {data.job_analysis.role}
+            <h2 className="font-display text-2xl font-bold text-primary-foreground md:text-3xl">
+              {data.candidate_profile.name || "Candidate"}
             </h2>
-            <p className="mt-3 max-w-xl font-body text-sm leading-relaxed text-primary-foreground/80 md:text-base">
-              Resume, job requirements, missing skills, and roadmap ko ek premium decision snapshot mein convert kiya gaya hai.
+            <p className="mt-2 font-body text-sm text-primary-foreground/80">
+              Applying for: <span className="font-semibold">{data.job_analysis.role}</span>
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              {topMissing.map((gap) => (
-                <span
-                  key={gap.skill}
-                  className="rounded-full border border-primary-foreground/15 bg-primary-foreground/10 px-4 py-2 text-xs font-body font-medium text-primary-foreground"
-                >
-                  Focus: {gap.skill}
-                </span>
-              ))}
-            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4">
             <ScoreRing score={data.evaluation.match_score} label="Match Score" />
             <ScoreRing score={data.skill_analysis.skill_match_percentage} label="Skill Match" />
           </div>

@@ -5,31 +5,44 @@ import {
   Upload, FileText, TrendingUp, Target, Users, Sparkles,
   BarChart3, Clock, History, LogOut, MessageSquare,
   MapPin, Mail, Briefcase, LayoutDashboard, ChevronLeft,
-  ChevronRight, Crown, Zap, Shield, ArrowRight, Plus
+  ChevronRight, Crown, Zap, Shield, ArrowRight, Plus,
+  Linkedin, Github, Loader2, User, Edit, CheckCircle, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import { useToast } from '@/hooks/use-toast';
 import FileUploadCard from '@/components/FileUploadCard';
 import JDInputCard from '@/components/JDInputCard';
 import TimeCommitmentCard from '@/components/TimeCommitmentCard';
 import SimulationLoader from '@/components/simulation/SimulationLoader';
 import { extractTextFromFile } from '@/lib/extractText';
+import { analyzeWithMirrorFish } from '@/lib/mirrorfish';
 import type { AnalysisResult } from '@/types/analysis';
 
 const DashboardPage = () => {
   const { currentUser, logout } = useAuth();
+  const { profile, loading: profileLoading, hasResume, saveProfile, updateProfile } = useUserProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // Analysis state
+  // Profile form state
   const [resumeFile, setResumeFile] = useState<File | null>(null);
+  const [linkedInUrl, setLinkedInUrl] = useState(profile?.linkedInUrl || '');
+  const [githubUrl, setGithubUrl] = useState(profile?.githubUrl || '');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+
+  // Analysis state for JD/Roadmap
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [jdText, setJdText] = useState("");
   const [weeklyHours, setWeeklyHours] = useState(20);
@@ -138,6 +151,7 @@ const DashboardPage = () => {
 
   const sidebarItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { path: '/edit-profile', label: 'Edit Profile', icon: User },
     { path: '/virtual-hr', label: 'Virtual HR Comments', icon: MessageSquare },
     { path: '/match-roadmap', label: 'Resume JD Match', icon: MapPin },
     { path: '/tailored-email', label: 'Tailored Email', icon: Mail },
@@ -151,6 +165,87 @@ const DashboardPage = () => {
   };
 
   const isDemoUser = !currentUser || currentUser?.email?.includes('demo');
+
+  // Profile save handler
+  const handleSaveProfile = async () => {
+    if (!resumeFile) {
+      toast({
+        title: 'Resume Required',
+        description: 'Please upload your resume first',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingProfile(true);
+
+    try {
+      const resumeText = await extractTextFromFile(resumeFile);
+      
+      if (resumeText.trim().length < 20) {
+        throw new Error('Resume text could not be read properly');
+      }
+
+      // Convert file to base64 for storage
+      const base64File = await fileToBase64(resumeFile);
+
+      // Save profile data
+      await saveProfile({
+        resumeFile: base64File,
+        resumeText,
+        linkedInUrl,
+        githubUrl,
+      });
+
+      toast({
+        title: 'Profile Saved',
+        description: 'Analyzing your resume...',
+      });
+
+      // Auto-analyze resume using MirrorFish
+      setIsAnalyzing(true);
+      
+      try {
+        const analysisResult = await analyzeWithMirrorFish(resumeText, '', 20);
+        
+        // Save analysis result
+        await updateProfile({
+          lastAnalysis: analysisResult,
+          skills: analysisResult.candidate_profile?.skills || [],
+        });
+
+        toast({
+          title: 'Analysis Complete',
+          description: 'Your resume has been analyzed successfully!',
+        });
+      } catch (analysisError) {
+        console.error('Auto-analysis error:', analysisError);
+        toast({
+          title: 'Profile Saved',
+          description: 'Resume saved. You can now use all features.',
+        });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Something went wrong';
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingProfile(false);
+      setIsAnalyzing(false);
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -259,6 +354,237 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Profile Section - Setup or Edit Resume, LinkedIn, GitHub */}
+          {!hasResume ? (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
+              <Card className="shadow-xl border-primary/20">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-purple-600 flex items-center justify-center">
+                      <Sparkles className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl font-bold font-display">Complete Your Profile</CardTitle>
+                      <CardDescription>Upload your resume and add your profiles to get personalized insights</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-6">
+                  {/* Resume Upload */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Upload Your Resume *
+                    </Label>
+                    <FileUploadCard
+                      label="Resume"
+                      description="PDF, DOC, or DOCX (Required)"
+                      file={resumeFile}
+                      onFileChange={setResumeFile}
+                    />
+                  </div>
+
+                  {/* LinkedIn URL */}
+                  <div className="space-y-2">
+                    <Label htmlFor="linkedin" className="text-sm font-medium flex items-center gap-2">
+                      <Linkedin className="h-4 w-4" />
+                      LinkedIn Profile URL
+                    </Label>
+                    <Input
+                      id="linkedin"
+                      type="url"
+                      placeholder="https://linkedin.com/in/yourprofile"
+                      value={linkedInUrl}
+                      onChange={(e) => setLinkedInUrl(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+
+                  {/* GitHub URL */}
+                  <div className="space-y-2">
+                    <Label htmlFor="github" className="text-sm font-medium flex items-center gap-2">
+                      <Github className="h-4 w-4" />
+                      GitHub Profile URL
+                    </Label>
+                    <Input
+                      id="github"
+                      type="url"
+                      placeholder="https://github.com/yourusername"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      className="h-12"
+                    />
+                  </div>
+
+                  {/* Save Button */}
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={!resumeFile || isSavingProfile || isAnalyzing}
+                    className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 rounded-xl shadow-lg shadow-primary/25"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Analyzing Resume...
+                      </>
+                    ) : isSavingProfile ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Saving Profile...
+                      </>
+                    ) : (
+                      <>
+                        Save Profile & Continue
+                        <ArrowRight className="ml-2 h-5 w-5" />
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ) : (
+            /* Profile Edit Card - Show when user has completed profile */
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="mb-8">
+              <Card className="shadow-xl border-primary/20">
+                <CardHeader className="border-b bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary to-purple-600 flex items-center justify-center">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-xl font-bold font-display">Your Profile</CardTitle>
+                        <CardDescription>Manage your resume, LinkedIn, and GitHub profiles</CardDescription>
+                      </div>
+                    </div>
+                    <Button variant="outline" onClick={() => setShowProfileEdit(!showProfileEdit)}>
+                      <Edit className="h-4 w-4 mr-2" />
+                      {showProfileEdit ? 'Cancel' : 'Edit Profile'}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {!showProfileEdit ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/5 border border-green-500/20">
+                        <div className="w-10 h-10 rounded-lg bg-green-500/10 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">Resume Uploaded</p>
+                          <p className="text-sm text-muted-foreground">Your resume is saved and ready for analysis</p>
+                        </div>
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      </div>
+                      
+                      {profile?.linkedInUrl && (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-500/5 border border-blue-500/20">
+                          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                            <Linkedin className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">LinkedIn Profile</p>
+                            <a href={profile.linkedInUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                              {profile.linkedInUrl}
+                            </a>
+                          </div>
+                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      
+                      {profile?.githubUrl && (
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-500/5 border border-gray-500/20">
+                          <div className="w-10 h-10 rounded-lg bg-gray-500/10 flex items-center justify-center">
+                            <Github className="h-5 w-5 text-gray-700" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">GitHub Profile</p>
+                            <a href={profile.githubUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-700 hover:underline">
+                              {profile.githubUrl}
+                            </a>
+                          </div>
+                          <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Resume Upload */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Update Resume
+                        </Label>
+                        <FileUploadCard
+                          label="Resume"
+                          description="PDF, DOC, or DOCX (Optional - leave empty to keep current)"
+                          file={resumeFile}
+                          onFileChange={setResumeFile}
+                        />
+                      </div>
+
+                      {/* LinkedIn URL */}
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-linkedin" className="text-sm font-medium flex items-center gap-2">
+                          <Linkedin className="h-4 w-4" />
+                          LinkedIn Profile URL
+                        </Label>
+                        <Input
+                          id="edit-linkedin"
+                          type="url"
+                          placeholder="https://linkedin.com/in/yourprofile"
+                          value={linkedInUrl}
+                          onChange={(e) => setLinkedInUrl(e.target.value)}
+                          className="h-12"
+                        />
+                      </div>
+
+                      {/* GitHub URL */}
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-github" className="text-sm font-medium flex items-center gap-2">
+                          <Github className="h-4 w-4" />
+                          GitHub Profile URL
+                        </Label>
+                        <Input
+                          id="edit-github"
+                          type="url"
+                          placeholder="https://github.com/yourusername"
+                          value={githubUrl}
+                          onChange={(e) => setGithubUrl(e.target.value)}
+                          className="h-12"
+                        />
+                      </div>
+
+                      {/* Update Button */}
+                      <Button
+                        onClick={handleUpdateProfile}
+                        disabled={isSavingProfile || isAnalyzing}
+                        className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-primary to-purple-600 hover:opacity-90 rounded-xl shadow-lg shadow-primary/25"
+                      >
+                        {isAnalyzing ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Analyzing Resume...
+                          </>
+                        ) : isSavingProfile ? (
+                          <>
+                            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            Saving Changes...
+                          </>
+                        ) : (
+                          <>
+                            Save Changes
+                            <ArrowRight className="ml-2 h-5 w-5" />
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Stats Cards */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

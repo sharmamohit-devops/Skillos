@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import FileUploadCard from '@/components/FileUploadCard';
 import { extractTextFromFile } from '@/lib/extractText';
-import { analyzeWithMirrorFish } from '@/lib/mirrorfish';
+import { generateTailoredEmail } from '@/lib/gemini';
 
 interface GeneratedEmail {
   subject: string;
@@ -20,6 +21,7 @@ interface GeneratedEmail {
 }
 
 const TailoredEmail = () => {
+  const { profile, hasResume } = useUserProfile();
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jobDescription, setJobDescription] = useState('');
   const [companyName, setCompanyName] = useState('');
@@ -28,12 +30,22 @@ const TailoredEmail = () => {
   const [generatedEmail, setGeneratedEmail] = useState<GeneratedEmail | null>(null);
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
+  
+  // Use saved resume from profile if available
+  const effectiveResumeText = profile?.resumeText || '';
 
   const handleGenerate = async () => {
-    if (!resumeFile) {
+    // Get resume text either from profile or uploaded file
+    let resumeText = '';
+    
+    if (hasResume && profile?.resumeText) {
+      resumeText = profile.resumeText;
+    } else if (resumeFile) {
+      resumeText = await extractTextFromFile(resumeFile);
+    } else {
       toast({
         title: 'Resume Required',
-        description: 'Please upload your resume first',
+        description: 'Please upload your resume first or complete onboarding',
         variant: 'destructive',
       });
       return;
@@ -48,57 +60,37 @@ const TailoredEmail = () => {
       return;
     }
 
+    if (!companyName.trim()) {
+      toast({
+        title: 'Company Name Required',
+        description: 'Please enter the company name',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsGenerating(true);
     setGeneratedEmail(null);
 
     try {
-      const resumeText = await extractTextFromFile(resumeFile);
-      
       if (resumeText.trim().length < 20) {
         throw new Error('Resume text could not be read properly');
       }
 
-      // Analyze resume using MirrorFish
-      const analysisResult = await analyzeWithMirrorFish(resumeText, jobDescription, 20);
-
-      // Extract key information from resume
-      const candidateName = resumeText.match(/Name:\s*(.+)/i)?.[1] || 
-                           resumeText.match(/^([A-Z][a-z]+\s[A-Z][a-z]+)/m)?.[1] || 
-                           'Candidate';
-      
-      const topSkills = analysisResult.skill_analysis?.matched_skills?.slice(0, 3) || 
-                       analysisResult.evaluation?.strengths?.slice(0, 3) || 
-                       ['relevant experience', 'technical skills', 'problem-solving abilities'];
-
-      const experience = analysisResult.job_analysis?.experience_required || 'experienced professional';
-      const roleTitle = jobDescription.match(/(?:Job Title|Position|Role):?\s*([^\n]+)/i)?.[1]?.trim() || 
-                       'the position';
-
-      const company = companyName || 'your company';
-      const manager = hiringManager || 'Hiring Manager';
-
-      // Generate tailored email
-      const email: GeneratedEmail = {
-        subject: `Application for ${roleTitle} - ${candidateName}`,
-        body: `Dear ${manager},
-
-I hope this email finds you well. I am writing to express my strong interest in the ${roleTitle} position at ${company}. After reviewing the job description, I am confident that my background and skills align perfectly with what you're looking for.
-
-With ${experience} of experience, I have developed expertise in ${topSkills.join(', ')}, which directly matches the key requirements outlined in your posting. ${analysisResult.evaluation?.strengths?.[0] ? `Notably, ${analysisResult.evaluation.strengths[0]}.` : ''}
-
-${analysisResult.skill_analysis?.matched_skills?.length ? 
-  `My experience with ${analysisResult.skill_analysis.matched_skills.slice(0, 3).join(', ')} has prepared me to make an immediate impact on your team.` : 
-  'I am eager to bring my skills and dedication to contribute to your team\'s success.'
-}
-
-I am particularly drawn to ${company} because of its innovative approach and commitment to excellence. I would welcome the opportunity to discuss how my background and enthusiasm can contribute to your team's continued success.
-
-Thank you for considering my application. I look forward to the possibility of speaking with you soon.
-
-Best regards,
-${candidateName}`,
+      // Generate tailored email using Gemini
+      const result = await generateTailoredEmail({
+        resumeText,
+        jobDescription,
+        companyName,
+        hiringManager: hiringManager || undefined,
         tone: 'professional',
-        highlights: topSkills,
+      });
+
+      const email: GeneratedEmail = {
+        subject: result.subject,
+        body: result.body,
+        tone: 'professional',
+        highlights: result.highlights,
       };
 
       setGeneratedEmail(email);

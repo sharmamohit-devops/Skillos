@@ -5,6 +5,7 @@ import { Upload, Brain, Sparkles, FileText, ArrowRight, ArrowLeft, Bot, Users, B
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import FileUploadCard from '@/components/FileUploadCard';
 import SimulationLoader from '@/components/simulation/SimulationLoader';
 import { extractTextFromFile } from '@/lib/extractText';
@@ -12,10 +13,14 @@ import type { AnalysisResult } from '@/types/analysis';
 
 const VirtualHRComments = () => {
   const navigate = useNavigate();
+  const { profile, hasResume } = useUserProfile();
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [showSimulation, setShowSimulation] = useState(false);
   const [resumeTextForSim, setResumeTextForSim] = useState("");
   const { toast } = useToast();
+  
+  // Use saved resume from profile if available
+  const effectiveResumeText = profile?.resumeText || resumeTextForSim;
 
   const agents = [
     { name: 'ATLAS', role: 'ATS System', icon: Bot, color: 'text-blue-400', description: 'Resume format and keyword screening' },
@@ -25,10 +30,18 @@ const VirtualHRComments = () => {
   ];
 
   const handleAnalyze = async () => {
+    // If user has saved resume in profile, use it directly
+    if (hasResume && profile?.resumeText) {
+      setResumeTextForSim(profile.resumeText);
+      setShowSimulation(true);
+      return;
+    }
+    
+    // Otherwise, require file upload
     if (!resumeFile) {
       toast({
         title: 'Resume Required',
-        description: 'Please upload your resume first',
+        description: 'Please upload your resume first or complete onboarding',
         variant: 'destructive',
       });
       return;
@@ -39,8 +52,6 @@ const VirtualHRComments = () => {
       if (resumeText.trim().length < 20) throw new Error("Resume text could not be read properly");
 
       setResumeTextForSim(resumeText);
-      // For resume-only analysis, we'll use a generic job description
-      const genericJD = "Software Developer position requiring technical skills, problem-solving abilities, and professional experience. Looking for candidates with strong programming background and ability to work in team environments.";
       setShowSimulation(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
@@ -57,7 +68,7 @@ const VirtualHRComments = () => {
     }
   };
 
-  const canAnalyze = Boolean(resumeFile);
+  const canAnalyze = hasResume || Boolean(resumeFile);
 
   return (
     <div className="min-h-screen bg-background">

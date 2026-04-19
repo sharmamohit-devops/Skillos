@@ -135,7 +135,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signup = async (email: string, password: string, name: string) => {
     if (!useFirebase) {
-      await fallbackAuth.signup(email, password, name);
+      const user = await fallbackAuth.signup(email, password, name);
+      setCurrentUser(user);
       return;
     }
 
@@ -145,21 +146,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Update user profile with name
       await updateProfile(user, { displayName: name });
       
-      // Create user document in Firestore (with error handling)
-      try {
-        if (db) {
-          await setDoc(doc(db, 'users', user.uid), {
-            uid: user.uid,
-            email: user.email,
-            displayName: name,
-            photoURL: user.photoURL,
-            createdAt: new Date().toISOString(),
-            analysisCount: 0,
-            lastLogin: new Date().toISOString()
-          });
-        }
-      } catch (firestoreError) {
-        console.warn('Firestore write failed, continuing with auth:', firestoreError);
+      // Set current user immediately (don't wait for Firestore)
+      setCurrentUser(user);
+      
+      // Create user document in Firestore asynchronously (non-blocking)
+      if (db) {
+        setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email,
+          displayName: name,
+          photoURL: user.photoURL,
+          createdAt: new Date().toISOString(),
+          analysisCount: 0,
+          lastLogin: new Date().toISOString()
+        }).catch(error => console.warn('Firestore write failed:', error));
       }
     } catch (error) {
       console.error('Firebase signup error:', error);
@@ -172,21 +172,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     if (!useFirebase) {
       await fallbackAuth.login(email, password);
+      setCurrentUser(fallbackAuth.currentUser);
       return;
     }
 
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, password);
       
-      // Update last login (with error handling)
-      try {
-        if (db) {
-          await setDoc(doc(db, 'users', user.uid), {
-            lastLogin: new Date().toISOString()
-          }, { merge: true });
-        }
-      } catch (firestoreError) {
-        console.warn('Firestore update failed, continuing with auth:', firestoreError);
+      // Set current user immediately (don't wait for Firestore)
+      setCurrentUser(user);
+      
+      // Update last login asynchronously (non-blocking)
+      if (db) {
+        setDoc(doc(db, 'users', user.uid), {
+          lastLogin: new Date().toISOString()
+        }, { merge: true }).catch(error => console.warn('Firestore update failed:', error));
       }
     } catch (error) {
       console.error('Firebase login error:', error);
@@ -204,29 +204,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const { user } = await signInWithPopup(auth, googleProvider);
       
-      // Check if user document exists, create if not (with error handling)
-      try {
-        if (db) {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (!userDoc.exists()) {
-            await setDoc(doc(db, 'users', user.uid), {
-              uid: user.uid,
-              email: user.email,
-              displayName: user.displayName,
-              photoURL: user.photoURL,
-              createdAt: new Date().toISOString(),
-              analysisCount: 0,
-              lastLogin: new Date().toISOString()
-            });
-          } else {
-            // Update last login
-            await setDoc(doc(db, 'users', user.uid), {
-              lastLogin: new Date().toISOString()
-            }, { merge: true });
-          }
-        }
-      } catch (firestoreError) {
-        console.warn('Firestore operation failed, continuing with auth:', firestoreError);
+      // Set current user immediately (don't wait for Firestore)
+      setCurrentUser(user);
+      
+      // Handle Firestore operations asynchronously (non-blocking)
+      if (db) {
+        getDoc(doc(db, 'users', user.uid))
+          .then(userDoc => {
+            if (!userDoc.exists()) {
+              return setDoc(doc(db, 'users', user.uid), {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                createdAt: new Date().toISOString(),
+                analysisCount: 0,
+                lastLogin: new Date().toISOString()
+              });
+            } else {
+              return setDoc(doc(db, 'users', user.uid), {
+                lastLogin: new Date().toISOString()
+              }, { merge: true });
+            }
+          })
+          .catch(error => console.warn('Firestore operation failed:', error));
       }
     } catch (error) {
       console.error('Google login error:', error);

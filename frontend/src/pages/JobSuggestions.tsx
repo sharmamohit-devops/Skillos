@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import FileUploadCard from '@/components/FileUploadCard';
 import { extractTextFromFile } from '@/lib/extractText';
-import { analyzeWithMirrorFish } from '@/lib/mirrorfish';
+import { generateJobSuggestions } from '@/lib/gemini';
 
 interface JobSuggestion {
   id: string;
@@ -26,12 +27,16 @@ interface JobSuggestion {
 }
 
 const JobSuggestions = () => {
+  const { profile, hasResume } = useUserProfile();
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [jobs, setJobs] = useState<JobSuggestion[]>([]);
   const [savedJobs, setSavedJobs] = useState<string[]>([]);
   const [analysisComplete, setAnalysisComplete] = useState(false);
   const { toast } = useToast();
+  
+  // Use saved resume from profile if available
+  const effectiveResumeText = profile?.resumeText || '';
 
   // Sample job data - in production, this would come from job APIs
   const sampleJobs: Omit<JobSuggestion, 'matchScore' | 'isSaved'>[] = [
@@ -98,10 +103,17 @@ const JobSuggestions = () => {
   ];
 
   const handleAnalyze = async () => {
-    if (!resumeFile) {
+    // Get resume text either from profile or uploaded file
+    let resumeText = '';
+    
+    if (hasResume && profile?.resumeText) {
+      resumeText = profile.resumeText;
+    } else if (resumeFile) {
+      resumeText = await extractTextFromFile(resumeFile);
+    } else {
       toast({
         title: 'Resume Required',
-        description: 'Please upload your resume first',
+        description: 'Please upload your resume first or complete onboarding',
         variant: 'destructive',
       });
       return;
@@ -112,38 +124,28 @@ const JobSuggestions = () => {
     setAnalysisComplete(false);
 
     try {
-      const resumeText = await extractTextFromFile(resumeFile);
-      
       if (resumeText.trim().length < 20) {
         throw new Error('Resume text could not be read properly');
       }
 
-      // Analyze resume using MirrorFish
-      const analysisResult = await analyzeWithMirrorFish(resumeText, '', 20);
+      // Generate job suggestions using Gemini
+      const suggestedJobs = await generateJobSuggestions(resumeText);
 
-      // Calculate match scores for each job based on skills
-      const userSkills = analysisResult.skill_analysis?.matched_skills || [];
-      const missingSkills = analysisResult.skill_analysis?.missing_skills || [];
-      const allSkills = [...userSkills, ...missingSkills];
-
-      const matchedJobs: JobSuggestion[] = sampleJobs.map((job) => {
-        const matchingSkills = job.requiredSkills.filter((skill) =>
-          allSkills.some((userSkill) =>
-            userSkill.toLowerCase().includes(skill.toLowerCase()) ||
-            skill.toLowerCase().includes(userSkill.toLowerCase())
-          )
-        );
-
-        const matchScore = Math.round(
-          (matchingSkills.length / job.requiredSkills.length) * 100
-        );
-
-        return {
-          ...job,
-          matchScore: Math.min(matchScore + 20, 95), // Boost score slightly
-          isSaved: savedJobs.includes(job.id),
-        };
-      });
+      // Map the Gemini response to our JobSuggestion interface
+      const matchedJobs: JobSuggestion[] = suggestedJobs.map((job) => ({
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        salary: job.salary,
+        type: 'Full-time',
+        matchScore: job.matchScore,
+        requiredSkills: job.skills,
+        description: job.description,
+        postedDate: job.postedDate,
+        applyUrl: job.url || '#',
+        isSaved: savedJobs.includes(job.id),
+      }));
 
       // Sort by match score (highest first)
       matchedJobs.sort((a, b) => b.matchScore - a.matchScore);

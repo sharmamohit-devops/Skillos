@@ -104,42 +104,42 @@ const AgentCard = ({ report, delay = 0 }: AgentCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay }}
-      className={`rounded-2xl border ${config?.borderColor || 'border-border'} ${config?.bgColor || 'bg-card'} p-6 hover-lift shadow-card`}
+      className={`rounded-xl border ${config?.borderColor || 'border-border'} ${config?.bgColor || 'bg-card'} p-4 hover-lift shadow-card`}
     >
       {/* Agent Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className={`h-10 w-10 rounded-xl ${config?.bgColor || 'bg-muted'} border ${config?.borderColor || 'border-border'} flex items-center justify-center`}>
-            <Icon className={`h-5 w-5 ${config?.textColor || 'text-muted-foreground'}`} />
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className={`h-8 w-8 rounded-lg ${config?.bgColor || 'bg-muted'} border ${config?.borderColor || 'border-border'} flex items-center justify-center`}>
+            <Icon className={`h-4 w-4 ${config?.textColor || 'text-muted-foreground'}`} />
           </div>
           <div>
-            <h3 className="font-display text-lg font-bold text-foreground">
+            <h3 className="font-display text-sm font-bold text-foreground">
               {report.name}
             </h3>
-            <p className="text-xs font-body text-muted-foreground">
+            <p className="text-[10px] font-body text-muted-foreground">
               {report.role}
             </p>
           </div>
         </div>
 
         {/* Verdict Badge */}
-        <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold border ${
+        <div className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold border ${
           verdict.color === 'text-success' ? 'bg-success/10 border-success/20 text-success' :
           verdict.color === 'text-warning' ? 'bg-warning/10 border-warning/20 text-warning' :
           'bg-destructive/10 border-destructive/20 text-destructive'
         }`}>
-          <VerdictIcon className="h-3 w-3" />
+          <VerdictIcon className="h-2.5 w-2.5" />
           {verdict.label}
         </div>
       </div>
 
       {/* Confidence Score */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-body font-semibold text-foreground">Confidence</span>
-          <span className="text-sm font-body text-muted-foreground">{report.confidence}%</span>
+      <div className="mb-3">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-body font-semibold text-foreground">Confidence</span>
+          <span className="text-xs font-body text-muted-foreground">{report.confidence}%</span>
         </div>
-        <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden">
           <motion.div
             className={`h-full rounded-full ${
               report.confidence >= 80 ? 'bg-success' :
@@ -155,13 +155,13 @@ const AgentCard = ({ report, delay = 0 }: AgentCardProps) => {
 
       {/* Specific Scores */}
       {specificScores.length > 0 && (
-        <div className="mb-4 space-y-2">
+        <div className="mb-3 space-y-1.5">
           {specificScores.map((score, index) => (
             <div key={score.label} className="flex items-center justify-between">
-              <span className="text-xs font-body text-muted-foreground">{score.label}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-body font-semibold text-foreground">{score.value}%</span>
-                <div className="w-16 h-1.5 bg-muted/30 rounded-full overflow-hidden">
+              <span className="text-[10px] font-body text-muted-foreground">{score.label}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-body font-semibold text-foreground">{score.value}%</span>
+                <div className="w-12 h-1 bg-muted/30 rounded-full overflow-hidden">
                   <motion.div
                     className={`h-full rounded-full ${config?.textColor?.replace('text-', 'bg-') || 'bg-primary'}`}
                     initial={{ width: 0 }}
@@ -176,19 +176,19 @@ const AgentCard = ({ report, delay = 0 }: AgentCardProps) => {
       )}
 
       {/* Comment */}
-      <div className="rounded-xl bg-background/50 border border-border p-3">
-        <p className="text-sm font-body text-foreground leading-relaxed">
+      <div className="rounded-lg bg-background/50 border border-border p-2.5">
+        <p className="text-xs font-body text-foreground leading-relaxed">
           {report.comment}
         </p>
       </div>
 
       {/* Agent Personality Indicator */}
-      <div className="mt-3 flex items-center justify-between">
-        <div className="flex items-center gap-1">
+      <div className="mt-2 flex items-center justify-between">
+        <div className="flex items-center gap-0.5">
           {[...Array(5)].map((_, i) => (
             <Star
               key={i}
-              className={`h-3 w-3 ${
+              className={`h-2.5 w-2.5 ${
                 i < Math.floor(report.confidence / 20) 
                   ? `${config?.textColor || 'text-primary'}` 
                   : 'text-muted-foreground/30'
@@ -197,7 +197,7 @@ const AgentCard = ({ report, delay = 0 }: AgentCardProps) => {
             />
           ))}
         </div>
-        <span className="text-xs font-body text-muted-foreground">
+        <span className="text-[10px] font-body text-muted-foreground">
           {report.agent.toUpperCase()} Analysis
         </span>
       </div>

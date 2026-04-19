@@ -3,7 +3,8 @@ import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { UserProfileProvider } from '@/contexts/UserProfileContext';
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index.tsx";
 import AuthPage from "./pages/AuthPage.tsx";
@@ -14,24 +15,30 @@ import VirtualHRComments from "./pages/VirtualHRComments.tsx";
 import ResumeJDRoadmap from "./pages/ResumeJDRoadmap.tsx";
 import TailoredEmail from "./pages/TailoredEmail.tsx";
 import JobSuggestions from "./pages/JobSuggestions.tsx";
+import EditProfile from "./pages/EditProfile.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
 // Component to handle auth-based routing
 const AuthenticatedRoutes = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, loading } = useAuth();
+
+  // Show nothing while auth state is loading
+  if (loading) {
+    return null;
+  }
 
   return (
     <Routes>
       {/* Public routes */}
       <Route 
         path="/" 
-        element={currentUser ? <Navigate to="/dashboard" /> : <Index />} 
+        element={<Index />} 
       />
       <Route 
         path="/auth" 
-        element={currentUser ? <Navigate to="/dashboard" /> : <AuthPage />} 
+        element={<AuthPage />} 
       />
       
       {/* Protected routes */}
@@ -91,6 +98,14 @@ const AuthenticatedRoutes = () => {
           </ProtectedRoute>
         } 
       />
+      <Route 
+        path="/edit-profile" 
+        element={
+          <ProtectedRoute>
+            <EditProfile />
+          </ProtectedRoute>
+        } 
+      />
       
       {/* Catch all route */}
       <Route path="*" element={<NotFound />} />
@@ -105,7 +120,9 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <AuthenticatedRoutes />
+          <UserProfileProvider>
+            <AuthenticatedRoutes />
+          </UserProfileProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

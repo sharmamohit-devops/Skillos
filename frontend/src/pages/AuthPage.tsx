@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, Lock, User, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,9 @@ const AuthPage = () => {
     password: ''
   });
   
-  const { currentUser, login, signup, loginWithGoogle } = useAuth();
+  const { login, signup, loginWithGoogle } = useAuth();
   const { toast } = useToast();
-
-  // Redirect if already logged in
-  if (currentUser) {
-    return <Navigate to="/dashboard" />;
-  }
+  const navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -52,6 +48,7 @@ const AuthPage = () => {
         title: "Welcome back!",
         description: "Successfully logged in"
       });
+      navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: "Login failed",
@@ -90,6 +87,7 @@ const AuthPage = () => {
         title: "Account created!",
         description: "Welcome to SkillOS"
       });
+      navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: "Signup failed",
@@ -109,6 +107,7 @@ const AuthPage = () => {
         title: "Welcome!",
         description: "Successfully logged in with Google"
       });
+      navigate('/dashboard');
     } catch (error: any) {
       toast({
         title: "Google login failed",
@@ -129,6 +128,9 @@ const AuthPage = () => {
       
       // Try to login with demo account
       await login(demoEmail, demoPassword);
+      
+      // Redirect to dashboard after demo login
+      navigate('/dashboard');
       
       // Add demo analysis data to localStorage
       const demoAnalysisHistory = [

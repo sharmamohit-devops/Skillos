@@ -1,42 +1,46 @@
 import { motion } from "framer-motion";
-import { Zap, Shield, Eye, Target } from "lucide-react";
+import { Bot, Users, Briefcase, Code, Target, Map, Zap, Shield } from "lucide-react";
 
 const features = [
-  { icon: Zap, title: "Smart Detection", description: "AI-powered analysis detects skill gaps and mismatches instantly.", color: "accent" },
-  { icon: Target, title: "Instant Results", description: "Get comprehensive analysis in seconds. No waiting or complex setup.", color: "orange" },
-  { icon: Shield, title: "100% Private", description: "Your resume is never stored or shared. All analysis happens securely.", color: "teal" },
-  { icon: Eye, title: "Visual Analysis", description: "Clear visual breakdown of matched, missing, and partial skills.", color: "info" },
+  { icon: Bot,      title: "ATLAS — ATS Simulator",    description: "Predicts your ATS pass rate, keyword score, and format compliance — just like real recruiting software.", color: "info"   },
+  { icon: Users,    title: "PRIYA — HR Screener",       description: "Evaluates cultural fit, career progression, soft skills, and red/green flags from an HR perspective.",   color: "accent"  },
+  { icon: Briefcase,title: "ALEX — Startup HM",         description: "Assesses execution potential, adaptability, and startup mindset as a fast-moving hiring manager would.",  color: "orange"  },
+  { icon: Code,     title: "DR. CHEN — Tech Lead",      description: "Dives deep into technical depth, stack alignment, and engineering complexity — the toughest evaluator.",   color: "teal"    },
+  { icon: Target,   title: "Skill Gap Intelligence",    description: "Pinpoints exact missing, partial, and matched skills with priority levels and required proficiency depth.", color: "accent"  },
+  { icon: Map,      title: "Personalized Roadmap",      description: "Step-by-step learning roadmap with time estimates, free YouTube resources, docs, and practice projects.",  color: "orange"  },
+  { icon: Zap,      title: "Instant Analysis",          description: "Full AI evaluation in under 30 seconds. No setup, no waiting — upload and get actionable results now.",     color: "teal"    },
+  { icon: Shield,   title: "100% Private & Free",       description: "Your resume is never stored or shared. All analysis is secure, private, and completely free to use.",       color: "info"    },
 ];
 
 const colorMap: Record<string, { bg: string; text: string; glow: string }> = {
-  accent: { bg: "bg-accent/10", text: "text-accent", glow: "group-hover:shadow-[0_0_20px_hsl(252_56%_57%/0.12)]" },
-  orange: { bg: "bg-orange/10", text: "text-orange", glow: "group-hover:shadow-[0_0_20px_hsl(25_95%_55%/0.12)]" },
-  teal: { bg: "bg-teal/10", text: "text-teal", glow: "group-hover:shadow-[0_0_20px_hsl(170_65%_45%/0.12)]" },
-  info: { bg: "bg-info/10", text: "text-info", glow: "group-hover:shadow-[0_0_20px_hsl(210_80%_55%/0.12)]" },
+  accent: { bg: "bg-accent/10",  text: "text-accent",  glow: "group-hover:shadow-[0_0_20px_hsl(252_56%_57%/0.12)]" },
+  orange: { bg: "bg-orange/10",  text: "text-orange",  glow: "group-hover:shadow-[0_0_20px_hsl(25_95%_55%/0.12)]"  },
+  teal:   { bg: "bg-teal/10",    text: "text-teal",    glow: "group-hover:shadow-[0_0_20px_hsl(170_65%_45%/0.12)]" },
+  info:   { bg: "bg-info/10",    text: "text-info",    glow: "group-hover:shadow-[0_0_20px_hsl(210_80%_55%/0.12)]" },
 };
 
 const detectTags = [
-  { label: "Missing Core Skills", color: "destructive" },
-  { label: "Partial Knowledge", color: "warning" },
-  { label: "Tool Gaps", color: "accent" },
-  { label: "Framework Gaps", color: "accent" },
-  { label: "Experience Mismatch", color: "orange" },
-  { label: "Domain Mismatch", color: "orange" },
-  { label: "Depth Mismatch", color: "warning" },
-  { label: "Tech Stack Gaps", color: "info" },
-  { label: "Project Gaps", color: "teal" },
-  { label: "Certification Gaps", color: "teal" },
-  { label: "Soft Skill Gaps", color: "warning" },
-  { label: "Industry Alignment", color: "info" },
+  { label: "Missing Core Skills",   color: "destructive" },
+  { label: "Partial Knowledge",     color: "warning"     },
+  { label: "Tool Gaps",             color: "accent"      },
+  { label: "Framework Gaps",        color: "accent"      },
+  { label: "Experience Mismatch",   color: "orange"      },
+  { label: "Domain Mismatch",       color: "orange"      },
+  { label: "Depth Mismatch",        color: "warning"     },
+  { label: "Tech Stack Gaps",       color: "info"        },
+  { label: "ATS Keyword Gaps",      color: "teal"        },
+  { label: "Culture Fit Score",     color: "teal"        },
+  { label: "Soft Skill Gaps",       color: "warning"     },
+  { label: "Industry Alignment",    color: "info"        },
 ];
 
 const tagColorClass: Record<string, string> = {
   destructive: "border-destructive/30 text-destructive bg-destructive/5 hover:bg-destructive/10 hover:border-destructive/50 hover:shadow-[0_0_12px_hsl(0_72%_55%/0.1)]",
-  warning: "border-warning/30 text-warning bg-warning/5 hover:bg-warning/10 hover:border-warning/50 hover:shadow-[0_0_12px_hsl(38_90%_55%/0.1)]",
-  accent: "border-accent/30 text-accent bg-accent/5 hover:bg-accent/10 hover:border-accent/50 hover:shadow-[0_0_12px_hsl(252_56%_57%/0.1)]",
-  orange: "border-orange/30 text-orange bg-orange/5 hover:bg-orange/10 hover:border-orange/50 hover:shadow-[0_0_12px_hsl(25_95%_55%/0.1)]",
-  info: "border-info/30 text-info bg-info/5 hover:bg-info/10 hover:border-info/50 hover:shadow-[0_0_12px_hsl(210_80%_55%/0.1)]",
-  teal: "border-teal/30 text-teal bg-teal/5 hover:bg-teal/10 hover:border-teal/50 hover:shadow-[0_0_12px_hsl(170_65%_45%/0.1)]",
+  warning:     "border-warning/30 text-warning bg-warning/5 hover:bg-warning/10 hover:border-warning/50 hover:shadow-[0_0_12px_hsl(38_90%_55%/0.1)]",
+  accent:      "border-accent/30 text-accent bg-accent/5 hover:bg-accent/10 hover:border-accent/50 hover:shadow-[0_0_12px_hsl(252_56%_57%/0.1)]",
+  orange:      "border-orange/30 text-orange bg-orange/5 hover:bg-orange/10 hover:border-orange/50 hover:shadow-[0_0_12px_hsl(25_95%_55%/0.1)]",
+  info:        "border-info/30 text-info bg-info/5 hover:bg-info/10 hover:border-info/50 hover:shadow-[0_0_12px_hsl(210_80%_55%/0.1)]",
+  teal:        "border-teal/30 text-teal bg-teal/5 hover:bg-teal/10 hover:border-teal/50 hover:shadow-[0_0_12px_hsl(170_65%_45%/0.1)]",
 };
 
 const LandingFeatures = () => {
@@ -49,12 +53,12 @@ const LandingFeatures = () => {
           viewport={{ once: true }}
           className="text-center mb-4"
         >
-          <p className="text-xs font-body font-semibold text-accent uppercase tracking-[0.2em] mb-3">Features</p>
+          <p className="text-xs font-body font-semibold text-accent uppercase tracking-[0.2em] mb-3">Platform Features</p>
           <h2 className="font-body text-3xl sm:text-4xl font-bold text-foreground">
-            Why <span className="font-display italic text-gradient-orange">Awareness</span> Matters
+            Why <span className="font-display italic text-gradient-orange">SkillOS</span> is different
           </h2>
           <p className="mt-3 text-muted-foreground font-body text-base max-w-lg mx-auto">
-            Skill gaps spread faster than you think. Your pause before applying makes all the difference.
+            Not just another resume checker — SkillOS simulates a full hiring panel and builds your personalized growth plan.
           </p>
         </motion.div>
 
@@ -83,7 +87,7 @@ const LandingFeatures = () => {
           })}
         </div>
 
-        {/* What We Detect — colorful tags with glow */}
+        {/* What We Detect */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -92,10 +96,12 @@ const LandingFeatures = () => {
         >
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-accent/8 border border-accent/20 mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            <span className="text-xs font-body font-semibold text-accent uppercase tracking-widest">What We Detect</span>
+            <span className="text-xs font-body font-semibold text-accent uppercase tracking-widest">What SkillOS Detects</span>
           </div>
-          <h3 className="font-body text-xl font-bold text-foreground mb-2">All skill gap types, covered</h3>
-          <p className="text-sm text-muted-foreground font-body mb-8 max-w-md mx-auto">12 different types of skill misalignment detected and categorized</p>
+          <h3 className="font-body text-xl font-bold text-foreground mb-2">All 12 skill gap types, covered</h3>
+          <p className="text-sm text-muted-foreground font-body mb-8 max-w-md mx-auto">
+            Every gap is categorized by type, priority level, and expected depth — nothing slips through
+          </p>
           <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
             {detectTags.map((tag, i) => (
               <motion.span

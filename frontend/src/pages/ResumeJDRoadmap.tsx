@@ -1,27 +1,31 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Upload, Target, MapPin, Sparkles, FileText, Briefcase, ArrowRight, Brain, Bot, Users, Code } from 'lucide-react';
+import { Upload, Target, MapPin, Sparkles, FileText, Briefcase, ArrowRight, ArrowLeft, Brain, Bot, Users, Code, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { useUserProfile } from '@/contexts/UserProfileContext';
 import FileUploadCard from '@/components/FileUploadCard';
 import JDInputCard from '@/components/JDInputCard';
 import TimeCommitmentCard from '@/components/TimeCommitmentCard';
-import SimulationLoader from '@/components/simulation/SimulationLoader';
 import { extractTextFromFile } from '@/lib/extractText';
+import { analyzeResumeJD } from '@/lib/pythonApi';
 import type { AnalysisResult } from '@/types/analysis';
 
 const ResumeJDRoadmap = () => {
   const navigate = useNavigate();
+  const { profile, hasResume } = useUserProfile();
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [jdFile, setJdFile] = useState<File | null>(null);
   const [jdText, setJdText] = useState("");
   const [weeklyHours, setWeeklyHours] = useState(20);
-  const [showSimulation, setShowSimulation] = useState(false);
-  const [resumeTextForSim, setResumeTextForSim] = useState("");
-  const [jdTextForSim, setJdTextForSim] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
   const { toast } = useToast();
+  
+  // Use saved resume from profile if available
+  const effectiveResumeText = profile?.resumeText || '';
 
   const features = [
     { 
@@ -58,10 +62,17 @@ const ResumeJDRoadmap = () => {
   ];
 
   const handleAnalyze = async () => {
-    if (!resumeFile) {
+    // Get resume text either from profile or uploaded file
+    let resumeText = '';
+    
+    if (hasResume && profile?.resumeText) {
+      resumeText = profile.resumeText;
+    } else if (resumeFile) {
+      resumeText = await extractTextFromFile(resumeFile);
+    } else {
       toast({
         title: 'Resume Required',
-        description: 'Please upload your resume first',
+        description: 'Please upload your resume first or complete onboarding',
         variant: 'destructive',
       });
       return;
@@ -78,44 +89,103 @@ const ResumeJDRoadmap = () => {
     }
 
     try {
-      const resumeText = await extractTextFromFile(resumeFile);
-      if (resumeText.trim().length < 20) throw new Error("Resume text could not be read properly");
-
+      setIsAnalyzing(true);
+      setAnalysisProgress(0);
+      
       const finalJdText = jdFile ? await extractTextFromFile(jdFile) : jdText.trim();
       if (finalJdText.trim().length < 20) throw new Error("Job description text could not be read properly");
-
-      setResumeTextForSim(resumeText);
-      setJdTextForSim(finalJdText);
-      setShowSimulation(true);
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setAnalysisProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+      
+      // Enrich profile with GitHub and LinkedIn data if available
+      let enrichedResumeText = resumeText;
+      if (profile?.githubUrl || profile?.linkedInUrl) {
+        try {
+          const { enrichProfile } = await import('@/lib/pythonApi');
+          const enriched = await enrichProfile({
+            resume_text: resumeText,
+            github_url: profile.githubUrl,
+            linkedin_url: profile.linkedInUrl
+          });
+          enrichedResumeText = enriched.resume_text;
+          
+          toast({
+            title: 'Profile Enriched',
+            description: `Added ${enriched.additional_skills.length} skills from GitHub and ${enriched.projects.length} projects`,
+          });
+        } catch (enrichError) {
+          console.error('Profile enrichment failed:', enrichError);
+          // Continue with original resume text
+        }
+      }
+      
+      // Call Python backend API
+      const result = await analyzeResumeJD({
+        resume_text: enrichedResumeText,
+        jd_text: finalJdText
+      });
+      
+      clearInterval(progressInterval);
+      setAnalysisProgress(100);
+      
+      // Navigate to results with the Python backend data
+      navigate("/results", { state: { result: result as AnalysisResult, weeklyHours, resumeOnly: false } });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Something went wrong";
       toast({ title: "Analysis failed", description: message, variant: "destructive" });
-    }
-  };
-
-  const handleSimulationComplete = (result: any) => {
-    setShowSimulation(false);
-    if (result.error) {
-      toast({ title: "Analysis failed", description: result.error, variant: "destructive" });
-    } else {
-      navigate("/results", { state: { result: result as AnalysisResult, weeklyHours } });
+    } finally {
+      setIsAnalyzing(false);
+      setAnalysisProgress(0);
     }
   };
 
   const hasJD = Boolean(jdFile) || jdText.trim().length > 20;
-  const canAnalyze = Boolean(resumeFile) && hasJD;
+  const canAnalyze = (hasResume || Boolean(resumeFile)) && hasJD;
 
   return (
     <div className="min-h-screen bg-background">
-      {showSimulation && (
-        <SimulationLoader 
-          resumeText={resumeTextForSim} 
-          jobDescription={jdTextForSim} 
-          onComplete={handleSimulationComplete} 
-        />
+      {isAnalyzing && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-card border rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Analyzing Resume & JD</h3>
+              <p className="text-muted-foreground mb-4">Our AI agents are reviewing your profile against the job requirements...</p>
+              <div className="w-full bg-muted rounded-full h-2 mb-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${analysisProgress}%` }}
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">{analysisProgress}% complete</p>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        {/* Back Button */}
+        <div className="mb-6">
+          <Button 
+            onClick={() => navigate(-1)} 
+            variant="ghost" 
+            className="rounded-xl"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back
+          </Button>
+        </div>
+
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}

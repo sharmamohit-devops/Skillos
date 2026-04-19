@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import LandingHero from "@/components/LandingHero";
 import LandingHowItWorks from "@/components/LandingHowItWorks";
+import LandingReplacement from "@/components/LandingReplacement";
 import LandingFeatures from "@/components/LandingFeatures";
 import LandingComparison from "@/components/LandingComparison";
 import LandingFooter from "@/components/LandingFooter";
@@ -45,7 +46,7 @@ const Index = () => {
                 {[
                   { label: "How It Works", target: "how-it-works" },
                   { label: "Features", target: "features" },
-                  { label: "Pricing", target: "pricing" },
+                  { label: "Why SkillOS", target: "pricing" },
                 ].map((item) => (
                   <button
                     type="button"
@@ -100,56 +101,7 @@ const Index = () => {
 
       <LandingHero onGetStarted={handleGetStarted} />
 
-      {/* CTA Section */}
-      <section className="py-24 px-6 bg-gradient-to-br from-primary/5 to-purple-600/5">
-        <div className="max-w-4xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="space-y-8"
-          >
-            <div>
-              <p className="text-xs font-body font-semibold text-accent uppercase tracking-[0.2em] mb-3">Ready to Start?</p>
-              <h2 className="font-body text-3xl sm:text-4xl font-bold text-foreground mb-4">
-                Join Thousands of <span className="font-display italic text-gradient-orange">Job Seekers</span>
-              </h2>
-              <p className="text-lg text-muted-foreground font-body max-w-2xl mx-auto">
-                Get instant feedback from our virtual HR panel, discover your skill gaps, 
-                and receive personalized learning roadmaps to advance your career.
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button
-                onClick={handleGetStarted}
-                size="lg"
-                className="rounded-2xl font-body px-8 py-4 text-primary-foreground border-0 hover:shadow-lg transition-all shimmer-btn bg-gradient-to-r from-primary to-purple-600 focus-ring"
-              >
-                <Sparkles className="w-5 h-5 mr-2" />
-                Start Free Analysis
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-              
-              <Button
-                onClick={handleTryDemo}
-                variant="outline"
-                size="lg"
-                className="rounded-2xl font-body px-8 py-4"
-              >
-                Try Demo Account
-              </Button>
-            </div>
-
-            {!currentUser && (
-              <p className="text-sm text-muted-foreground">
-                No credit card required • Free forever • Get started in 30 seconds
-              </p>
-            )}
-          </motion.div>
-        </div>
-      </section>
-
+      <LandingReplacement />
       <LandingHowItWorks />
       <LandingFeatures />
       <LandingComparison />
