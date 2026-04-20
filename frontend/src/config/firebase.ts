@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, connectAuthEmulator } from "firebase/auth";
+import { getAuth, GoogleAuthProvider, browserLocalPersistence, setPersistence } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getStorage, connectStorageEmulator } from "firebase/storage";
 
@@ -27,9 +27,9 @@ try {
   auth = getAuth(app);
   
   // Enable persistence for faster subsequent loads
-  auth.setPersistence({
-    type: 'LOCAL' // Use local storage for persistence
-  } as any);
+  setPersistence(auth, browserLocalPersistence).catch((error) => {
+    console.warn("Failed to enable Firebase auth persistence:", error);
+  });
   
   // Lazy initialize Firestore and Storage (only when needed)
   db = getFirestore(app);

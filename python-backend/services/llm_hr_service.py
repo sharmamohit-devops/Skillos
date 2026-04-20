@@ -39,10 +39,36 @@ import httpx  # async HTTP — pip install httpx
 logger = logging.getLogger(__name__)
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
-LLM_API_KEY  = os.getenv("LLM_API_KEY", "")
-LLM_MODEL    = os.getenv("LLM_MODEL", "gpt-4o-mini")
-LLM_TIMEOUT  = float(os.getenv("LLM_TIMEOUT", "300"))
+_fireworks_base_url = os.getenv("FIREWORKS_BASE_URL", "https://api.fireworks.ai/inference/v1")
+_fireworks_model = os.getenv("FIREWORKS_MODEL", "accounts/fireworks/models/qwen3-8b")
+
+LLM_BASE_URL = (
+    os.getenv("OPENAI_BASE_URL")
+    or (os.getenv("LLM_BASE_URL") if os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") else "")
+    or (os.getenv("FIREWORKS_BASE_URL") if os.getenv("FIREWORKS_API_KEY") else "")
+    or "https://api.openai.com/v1"
+)
+LLM_API_KEY  = (
+    os.getenv("OPENAI_API_KEY")
+    or os.getenv("LLM_API_KEY", "")
+    or os.getenv("FIREWORKS_API_KEY", "")
+)
+LLM_MODEL    = (
+    os.getenv("OPENAI_MODEL")
+    or (os.getenv("LLM_MODEL") if os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") else "")
+    or (os.getenv("FIREWORKS_MODEL") if os.getenv("FIREWORKS_API_KEY") else "")
+    or "gpt-4o-mini"
+)
+LLM_TIMEOUT  = float(
+    os.getenv("OPENAI_TIMEOUT")
+    or os.getenv("LLM_TIMEOUT")
+    or os.getenv("FIREWORKS_TIMEOUT")
+    or "300"
+)
+
+if LLM_API_KEY and "fireworks" in LLM_BASE_URL.lower():
+    if LLM_MODEL in {"gpt-4o-mini", "", None}:
+        LLM_MODEL = _fireworks_model
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -359,9 +385,10 @@ async def _call_llm(
     payload = {
         "model": LLM_MODEL,
         "max_tokens": 900,
-        "temperature": 0.3,  # low temp = more consistent JSON
+        "temperature": 0.2,  # lower temp = more consistent JSON
+        "response_format": {"type": "json_object"},
         "messages": [
-            {"role": "system", "content": system},
+            {"role": "system", "content": system + "\nReturn strict JSON only. Do not include <think> tags, analysis, or markdown."},
             {"role": "user",   "content": user},
         ],
     }
@@ -390,7 +417,8 @@ async def _call_llm(
 
 def _parse_json_response(text: str, label: str) -> dict:
     """Extract JSON from LLM response (handles markdown fences)."""
-    clean = re.sub(r"```(?:json)?", "", text).replace("```", "").strip()
+    clean = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL)
+    clean = re.sub(r"```(?:json)?", "", clean).replace("```", "").strip()
     # Find first { ... } block
     m = re.search(r"\{.*\}", clean, re.DOTALL)
     if not m:

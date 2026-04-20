@@ -799,7 +799,11 @@ Visual dashboard → Learning path → Export report
 **Backend (.env in python-backend/):**
 ```env
 OPENAI_API_KEY=your_openai_key
-DATABASE_URL=sqlite:///./data/app.db
+OPENAI_MODEL=gpt-4o-mini
+FIREWORKS_API_KEY=your_fireworks_key
+FIREWORKS_MODEL=accounts/fireworks/models/llama-v3p1-70b-instruct
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_SERVICE_ACCOUNT_KEY_PATH=path/to/serviceAccountKey.json
 ```
 
 **Frontend (.env in frontend/):**

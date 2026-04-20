@@ -192,7 +192,15 @@ const MilestoneCard = ({
 const Roadmap = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const data = location.state?.result as AnalysisResult | undefined;
+  const persisted = (() => {
+    try {
+      const raw = localStorage.getItem('latest_analysis_result');
+      return raw ? JSON.parse(raw) as AnalysisResult : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const data = (location.state?.result as AnalysisResult | undefined) || persisted;
   const initialHours = (location.state?.weeklyHours as number) ?? 20;
   const [weeklyHours] = useState(initialHours);
   const roadRef = useRef<HTMLDivElement>(null);

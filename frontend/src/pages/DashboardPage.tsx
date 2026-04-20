@@ -95,7 +95,7 @@ const DashboardPage = () => {
   };
 
   const handleAnalyze = async () => {
-    if (!resumeFile) {
+    if (!resumeFile && !(hasResume && profile?.resumeText)) {
       toast({ title: "Resume required", description: "Please upload your resume first", variant: "destructive" });
       return;
     }
@@ -107,7 +107,7 @@ const DashboardPage = () => {
     }
 
     try {
-      const resumeText = await extractTextFromFile(resumeFile);
+      const resumeText = profile?.resumeText || (resumeFile ? await extractTextFromFile(resumeFile) : "");
       if (resumeText.trim().length < 20) throw new Error("Resume text could not be read properly");
 
       const finalJdText = jdFile ? await extractTextFromFile(jdFile) : jdText.trim();
@@ -133,13 +133,14 @@ const DashboardPage = () => {
       const currentHistory = [analysisWithMetadata, ...analysisHistory].slice(0, 10);
       setAnalysisHistory(currentHistory);
       localStorage.setItem(`analysis_history_${userId}`, JSON.stringify(currentHistory));
+      localStorage.setItem('latest_analysis_result', JSON.stringify(result));
       
       navigate("/results", { state: { result: result as AnalysisResult, weeklyHours, fromDashboard: true } });
     }
   };
 
   const hasJD = Boolean(jdFile) || jdText.trim().length > 20;
-  const canAnalyze = Boolean(resumeFile) && hasJD;
+  const canAnalyze = (Boolean(resumeFile) || (hasResume && Boolean(profile?.resumeText))) && hasJD;
 
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase();
 

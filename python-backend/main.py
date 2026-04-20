@@ -8,10 +8,19 @@ import sys
 import asyncio
 import hashlib
 import time
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load env variables early
+load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
+
+from fastapi import BackgroundTasks
+from services.fireworks_generators import generate_tailored_email, generate_job_suggestions
 
 # ── LLM HR cache (no lock needed — LLM calls are stateless) ──────────────────
 _llm_hr_cache: dict = {}  # md5(resume[:500]+jd[:200]) → {"result": ..., "ts": float}
 _CACHE_TTL = 300  # 5 min
+_background_jobs: dict = {}  # user_id:resume_hash -> {"chunks": {}, "errors": {}, "updated_at": float}
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
@@ -498,6 +507,181 @@ except ImportError as e:
 # ── App setup ─────────────────────────────────────────────────────────────────
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+LIGHTWEIGHT_MODE = os.getenv("SKILLOS_LIGHTWEIGHT_MODE", "1").lower() not in {"0", "false", "no"}
+
+class _FallbackSkillExtractor:
+    def analyze_skills(self, candidate_skills, required_skills):
+        candidate_set = {str(s).lower() for s in candidate_skills}
+        required_set = {str(s).lower() for s in required_skills}
+        matched = sorted(candidate_set & required_set)
+        missing = sorted(required_set - candidate_set)
+        return {
+            "matched_skills": matched,
+            "missing_skills": missing,
+            "partial_skills": [],
+            "skill_match_percentage": (
+                len(matched) / len(required_skills) * 100 if required_skills else 0
+            ),
+        }
+
+    def analyze_skills_advanced(self, resume_text, jd_text):
+        resume_text_l = resume_text.lower()
+        jd_text_l = jd_text.lower()
+        common_skills = [
+            "python", "javascript", "typescript", "react", "node", "sql",
+            "docker", "aws", "git", "fastapi", "mongodb", "postgresql"
+        ]
+        matched = [s for s in common_skills if s in resume_text_l and s in jd_text_l]
+        missing = [s for s in common_skills if s in jd_text_l and s not in resume_text_l]
+        return {
+            "skills": {
+                "matched": matched,
+                "missing": missing,
+                "partial": [],
+                "skill_match_percentage": (
+                    len(matched) / len(set(matched + missing)) * 100 if (matched or missing) else 0
+                ),
+            },
+            "skill_depth": {s: "intermediate" for s in matched},
+            "skill_weights": [{"skill": s, "importance": "Medium"} for s in matched + missing],
+            "weighted_match_score": (
+                len(matched) / len(set(matched + missing)) * 100 if (matched or missing) else 0
+            ),
+            "risk_factors": [],
+        }
+
+    def generate_gap_intelligence(self, missing_skills, partial_skills, job_analysis):
+        priority_skills = set((job_analysis.get("required_skills") or [])[:3])
+        return [
+            {
+                "skill": skill,
+                "importance_level": "High" if skill in priority_skills else "Medium",
+                "skill_type": "framework" if skill in {"react", "node", "fastapi"} else "tool",
+                "dependency_skills": [],
+                "related_resume_gap": f"Missing {skill}",
+                "expected_depth": "intermediate",
+                "estimated_hours": 20 if skill in priority_skills else 12,
+                "learning_resource": f"Learn {skill} from official docs and project practice",
+            }
+            for skill in missing_skills
+        ]
+
+    def evaluate_candidate(self, candidate_profile, job_analysis, skill_analysis):
+        return {
+            "match_score": skill_analysis.get("skill_match_percentage", 0),
+            "strengths": skill_analysis.get("matched_skills", [])[:5],
+            "weaknesses": skill_analysis.get("missing_skills", [])[:5],
+            "risk_factors": skill_analysis.get("risk_factors", []),
+        }
+
+
+class _FallbackAdaptivePathfinder:
+    def generate_roadmap_context(self, candidate_profile, job_analysis, gap_intelligence):
+        top_gap_skills = [gap["skill"] for gap in gap_intelligence[:4]]
+        return {
+            "preferred_learning_domains": job_analysis.get("domains", ["Technology", "Software Development"]),
+            "project_complexity_level": "intermediate",
+            "suggested_project_types": [
+                f"{job_analysis.get('role', 'Software')} portfolio project",
+                "API integration project",
+                "Dashboard or CRUD application",
+            ],
+            "toolchain_recommendations": [
+                "VS Code",
+                "Git",
+                "Docker",
+                "Postman",
+            ],
+            "target_role": job_analysis.get("role", "Software Engineer"),
+            "current_level": "developing",
+            "target_level": "job-ready",
+            "estimated_weeks": max(4, len(top_gap_skills) * 2),
+        }
+
+    def generate_pathway(self, candidate_profile, job_analysis, gap_intelligence, roadmap_context):
+        pathway = [
+            {
+                "sequence": idx + 1,
+                "skill": gap["skill"],
+                "title": f"Learn {gap['skill']}",
+                "description": f"Build working knowledge of {gap['skill']} with guided practice.",
+                "importance_level": gap.get("importance_level", "Medium"),
+                "expected_depth": gap.get("expected_depth", "intermediate"),
+                "estimated_hours": gap.get("estimated_hours", 14),
+                "time_commitment": {
+                    "total_hours": gap.get("estimated_hours", 14),
+                    "estimated_weeks": max(1, (gap.get("estimated_hours", 14) + 9) // 10),
+                    "hours_per_week": 10,
+                    "daily_commitment": "1-2 hours/day",
+                },
+                "difficulty": "intermediate",
+                "prerequisites": gap.get("dependency_skills", []),
+                "learning_resources": [f"{gap['skill']} official docs", f"{gap['skill']} tutorial"],
+                "practice_projects": [f"Mini project using {gap['skill']}"],
+                "assessment_criteria": [f"Build and explain a working example with {gap['skill']}"],
+                "status": "not_started",
+            }
+            for idx, gap in enumerate(gap_intelligence[:5])
+        ]
+        reasoning = ["Generated fallback pathway from missing skills."]
+        return pathway, reasoning
+
+
+class _FallbackResumeParser:
+    def parse(self, resume_text):
+        lower = resume_text.lower()
+        skills = [
+            skill.title() for skill in
+            ["python", "javascript", "typescript", "react", "node", "sql", "docker", "aws", "git", "fastapi"]
+            if skill in lower
+        ]
+        return {
+            "name": "Candidate",
+            "domains": ["Technology", "Software Development"],
+            "skills": skills,
+            "experience": "Experience present in resume text",
+            "education": "Not parsed",
+            "projects": [],
+        }
+
+    def extract_text_from_file(self, content, filename):
+        try:
+            return content.decode("utf-8", errors="ignore")
+        except Exception:
+            return ""
+
+
+class _FallbackJDParser:
+    def parse(self, jd_text):
+        lower = jd_text.lower()
+        skills = [
+            skill.title() for skill in
+            ["python", "javascript", "typescript", "react", "node", "sql", "docker", "aws", "git", "fastapi"]
+            if skill in lower
+        ]
+        return {
+            "role": "Software Engineer",
+            "required_skills": skills,
+            "tech_stack": skills,
+            "experience_required": "Not parsed",
+            "domains": ["Technology"],
+        }
+
+
+class _FallbackAgentOrchestrator:
+    async def run_simulation(self, data):
+        return {
+            "agent_reports": {
+                "ats": {"agent": "ats", "name": "ATLAS", "role": "ATS System", "verdict": "PASS", "confidence": 70, "comment": "Fallback ATS review"},
+                "hr": {"agent": "hr", "name": "PRIYA", "role": "HR Screener", "verdict": "SHORTLIST", "confidence": 70, "comment": "Fallback HR review"},
+                "startup": {"agent": "startup", "name": "ALEX", "role": "Startup HM", "verdict": "MAYBE", "confidence": 68, "comment": "Fallback startup review"},
+                "tech": {"agent": "tech", "name": "DR. CHEN", "role": "Technical Lead", "verdict": "YES", "confidence": 72, "comment": "Fallback tech review"},
+            },
+            "overall_score": 70,
+            "shortlist_probability": 70,
+            "verdict": "POTENTIAL",
+            "panel_consensus": "Fallback simulation completed",
+        }
 
 app = FastAPI(title="AI-Adaptive Onboarding Engine", version="2.0.0")
 app.add_middleware(
@@ -508,11 +692,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-skill_extractor = SkillExtractor()
-adaptive_pathfinder = AdaptivePathfinder()
-resume_parser = ResumeParser()
-jd_parser = JDParser()
-agent_orchestrator = AgentOrchestrator()
+try:
+    if LIGHTWEIGHT_MODE:
+        raise RuntimeError("Lightweight mode enabled")
+    skill_extractor = SkillExtractor()
+    adaptive_pathfinder = AdaptivePathfinder()
+    resume_parser = ResumeParser()
+    jd_parser = JDParser()
+    agent_orchestrator = AgentOrchestrator()
+except Exception as e:
+    logger.warning("Using lightweight backend mode: %s", e)
+    skill_extractor = _FallbackSkillExtractor()
+    adaptive_pathfinder = _FallbackAdaptivePathfinder()
+    resume_parser = _FallbackResumeParser()
+    jd_parser = _FallbackJDParser()
+    agent_orchestrator = _FallbackAgentOrchestrator()
 
 
 # ── Pydantic models ───────────────────────────────────────────────────────────
@@ -539,6 +733,13 @@ class AnalysisResponse(BaseModel):
     simulation_status: Optional[str] = None
     synthesis: Optional[Dict[str, Any]] = None
 
+class BackgroundScanRequest(BaseModel):
+    user_id: str
+    resume_text: str
+    jd_text: str
+    company_name: Optional[str] = "Company"
+    hiring_manager: Optional[str] = "Hiring Manager"
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def _safe_skills(advanced_analysis: dict) -> tuple:
@@ -554,6 +755,31 @@ def _llm_cache_key(resume_text: str, jd_text: str) -> str:
     return hashlib.md5((resume_text[:500] + jd_text[:200]).encode()).hexdigest()
 
 
+def _background_job_key(user_id: str, resume_hash: str) -> str:
+    return f"{user_id}:{resume_hash}"
+
+
+def _ensure_background_job(user_id: str, resume_hash: str) -> dict:
+    job_key = _background_job_key(user_id, resume_hash)
+    job = _background_jobs.get(job_key)
+    if job is None:
+        job = {"chunks": {}, "errors": {}, "updated_at": time.time()}
+        _background_jobs[job_key] = job
+    return job
+
+
+def _store_background_chunk(user_id: str, resume_hash: str, chunk_name: str, data: dict):
+    job = _ensure_background_job(user_id, resume_hash)
+    job["chunks"][chunk_name] = data
+    job["updated_at"] = time.time()
+
+
+def _store_background_error(user_id: str, resume_hash: str, chunk_name: str, message: str):
+    job = _ensure_background_job(user_id, resume_hash)
+    job["errors"][chunk_name] = message
+    job["updated_at"] = time.time()
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 @app.get("/")
 async def root():
@@ -566,7 +792,12 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "models_loaded": True, "simulation": "llm_hr_direct"}
+    return {
+        "status": "healthy",
+        "models_loaded": not LIGHTWEIGHT_MODE,
+        "mode": "lightweight" if LIGHTWEIGHT_MODE else "full",
+        "simulation": "llm_hr_direct",
+    }
 
 
 @app.post("/analyze", response_model=AnalysisResponse)
@@ -751,6 +982,161 @@ async def analyze_resume_jd(request: AnalysisRequest):
         logger.error(f"Analysis failed: {e}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
+async def run_hr_evaluation_task(user_id: str, resume_hash: str, request: BackgroundScanRequest):
+    try:
+        # Run standard ML parsing
+        candidate_profile = resume_parser.parse(request.resume_text)
+        job_analysis = jd_parser.parse(request.jd_text)
+        advanced_analysis = skill_extractor.analyze_skills_advanced(request.resume_text, request.jd_text)
+        matched_skills, missing_skills, partial_skills = _safe_skills(advanced_analysis)
+        skill_match_pct = advanced_analysis.get("skills", {}).get("skill_match_percentage", 0)
+        
+        skill_analysis = skill_extractor.analyze_skills(candidate_profile["skills"], job_analysis["required_skills"])
+        skill_analysis.update({
+            "matched_skills": matched_skills,
+            "missing_skills": missing_skills,
+            "partial_skills": partial_skills,
+            "skill_match_percentage": skill_match_pct,
+            "skill_depth": advanced_analysis.get("skill_depth", {}),
+            "skill_weights": advanced_analysis.get("skill_weights", []),
+            "weighted_match_score": advanced_analysis.get("weighted_match_score", 0),
+            "risk_factors": advanced_analysis.get("risk_factors", []),
+        })
+
+        gap_intelligence = skill_extractor.generate_gap_intelligence(missing_skills, partial_skills, job_analysis)
+        evaluation = skill_extractor.evaluate_candidate(candidate_profile, job_analysis, skill_analysis)
+        roadmap_context = adaptive_pathfinder.generate_roadmap_context(candidate_profile, job_analysis, gap_intelligence)
+        learning_pathway, reasoning_trace = adaptive_pathfinder.generate_pathway(
+            candidate_profile, job_analysis, gap_intelligence, roadmap_context
+        )
+
+        ml_result = {
+            "candidate_profile": candidate_profile,
+            "job_analysis": job_analysis,
+            "skill_analysis": skill_analysis,
+            "gap_intelligence": gap_intelligence,
+            "evaluation": evaluation,
+            "roadmap_context": roadmap_context,
+            "learning_pathway": learning_pathway,
+            "reasoning_trace": reasoning_trace,
+        }
+
+        _store_background_chunk(user_id, resume_hash, "base_analysis", ml_result)
+
+        if check_llm_hr_available():
+            seed = build_seed_document(ml_result, request.resume_text, request.jd_text)
+            llm_result = await run_llm_hr_simulation(seed)
+            if llm_result:
+                # Merge into a final result suitable for UI
+                agent_reports = llm_result["agent_reports"]
+                report_meta = llm_result.get("mirrorfish_report", {})
+                
+                final_hr = {
+                    "agent_reports": agent_reports,
+                    "overall_score": sum([a["confidence"] for a in agent_reports.values()]) // len(agent_reports) if agent_reports else 70,
+                    "shortlist_probability": report_meta.get("shortlist_probability", 0),
+                    "verdict": report_meta.get("synthesis", {}).get("final_verdict", "POTENTIAL"),
+                    "panel_consensus": report_meta.get("synthesis", {}).get("panel_consensus", ""),
+                    "synthesis": report_meta.get("synthesis", {})
+                }
+                _store_background_chunk(user_id, resume_hash, "hr_simulation", final_hr)
+                return
+
+        sim = await agent_orchestrator.run_simulation(
+            {
+                "resume_text": request.resume_text,
+                "jd_text": request.jd_text,
+                "skill_analysis": skill_analysis,
+                "gap_intelligence": gap_intelligence,
+                "evaluation": evaluation,
+                "candidate_profile": candidate_profile,
+                "job_analysis": job_analysis,
+            }
+        )
+        final_hr = {
+            "agent_reports": sim["agent_reports"],
+            "overall_score": sim["overall_score"],
+            "shortlist_probability": sim["shortlist_probability"],
+            "verdict": sim["verdict"],
+            "panel_consensus": sim["panel_consensus"],
+            "synthesis": {},
+        }
+        _store_background_chunk(user_id, resume_hash, "hr_simulation", final_hr)
+    except Exception as e:
+        _store_background_error(user_id, resume_hash, "base_analysis", str(e))
+        _store_background_error(user_id, resume_hash, "hr_simulation", str(e))
+        logger.error(f"Background HR task failed: {e}")
+
+async def run_email_generation_task(user_id: str, resume_hash: str, request: BackgroundScanRequest):
+    try:
+        # Pass the extra parameters to email generator
+        result = await generate_tailored_email(
+            request.resume_text, 
+            request.jd_text, 
+            request.company_name, 
+            request.hiring_manager
+        )
+        if result:
+            _store_background_chunk(user_id, resume_hash, "tailored_email", result)
+        else:
+            _store_background_error(user_id, resume_hash, "tailored_email", "Email generation returned no result")
+    except Exception as e:
+        _store_background_error(user_id, resume_hash, "tailored_email", str(e))
+        logger.error(f"Background email task failed: {e}")
+
+async def run_job_suggestions_task(user_id: str, resume_hash: str, request: BackgroundScanRequest):
+    try:
+        result = await generate_job_suggestions(request.resume_text)
+        if result:
+            _store_background_chunk(user_id, resume_hash, "job_suggestions", {"suggestions": result})
+        else:
+            _store_background_error(user_id, resume_hash, "job_suggestions", "Job suggestions returned no result")
+    except Exception as e:
+        _store_background_error(user_id, resume_hash, "job_suggestions", str(e))
+        logger.error(f"Background job suggestions task failed: {e}")
+
+@app.post("/api/background-scan", status_code=202)
+async def background_scan(request: BackgroundScanRequest, background_tasks: BackgroundTasks):
+    try:
+        resume_hash = _llm_cache_key(request.resume_text, request.jd_text)
+        _ensure_background_job(request.user_id, resume_hash)
+        
+        # Trigger tasks
+        background_tasks.add_task(run_hr_evaluation_task, request.user_id, resume_hash, request)
+        background_tasks.add_task(run_email_generation_task, request.user_id, resume_hash, request)
+        background_tasks.add_task(run_job_suggestions_task, request.user_id, resume_hash, request)
+        
+        return {"status": "accepted", "resume_hash": resume_hash}
+    except Exception as e:
+        logger.error(f"Failed to queue background scan: {e}")
+        raise HTTPException(status_code=500, detail="Failed to queue scan")
+
+
+@app.get("/api/background-scan-result/{resume_hash}/{chunk_name}")
+async def get_background_scan_chunk(resume_hash: str, chunk_name: str, user_id: str):
+    job = _background_jobs.get(_background_job_key(user_id, resume_hash))
+    if job is None:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    if chunk_name in job["chunks"]:
+        return {
+            "status": "ready",
+            "chunk": chunk_name,
+            "data": job["chunks"][chunk_name],
+        }
+
+    if chunk_name in job["errors"]:
+        return {
+            "status": "error",
+            "chunk": chunk_name,
+            "error": job["errors"][chunk_name],
+        }
+
+    return {
+        "status": "pending",
+        "chunk": chunk_name,
+    }
+
 
 @app.post("/analyze-advanced")
 async def analyze_advanced(request: AnalysisRequest):
@@ -767,6 +1153,39 @@ async def analyze_advanced(request: AnalysisRequest):
         raise HTTPException(
             status_code=500, detail=f"Advanced analysis failed: {str(e)}"
         )
+
+
+@app.post("/analyze/detailed")
+async def analyze_detailed(request: AnalysisRequest):
+    return await analyze_advanced(request)
+
+
+class EnrichProfileRequest(BaseModel):
+    resume_text: str
+    github_url: Optional[str] = None
+    linkedin_url: Optional[str] = None
+
+
+@app.post("/enrich-profile")
+async def enrich_profile(request: EnrichProfileRequest):
+    skills = _FallbackResumeParser().parse(request.resume_text).get("skills", [])
+    return {
+        "resume_text": request.resume_text,
+        "github_data": {
+            "username": (request.github_url or "").rstrip("/").split("/")[-1] if request.github_url else "",
+            "name": "GitHub Profile",
+            "bio": "Imported from profile link",
+            "public_repos": 0,
+            "followers": 0,
+        } if request.github_url else None,
+        "linkedin_data": {
+            "url": request.linkedin_url,
+            "note": "LinkedIn URL captured",
+        } if request.linkedin_url else None,
+        "additional_skills": skills[:5],
+        "projects": [],
+        "total_experience_years": 2,
+    }
 
 
 @app.post("/upload-resume")

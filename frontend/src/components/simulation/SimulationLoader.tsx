@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Bot, Brain, Briefcase, Code, Users } from "lucide-react";
 import { useState, useEffect } from "react";
+import { analyzeResumeWithGemini } from '@/lib/gemini';
 
 interface SimulationLoaderProps {
   resumeText: string;
@@ -209,27 +210,10 @@ const SimulationLoader = ({ resumeText, jobDescription, onComplete }: Simulation
         let result;
         
         try {
-          // Try to call the backend API first
-          const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000";
-          const response = await fetch(`${apiUrl}/analyze`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              resume_text: resumeText,
-              jd_text: jobDescription,
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`Backend not available: ${response.status}`);
-          }
-
-          result = await response.json();
+          // Trigger background scan and poll Firebase chunks
+          result = await analyzeResumeWithGemini(resumeText, jobDescription);
         } catch (backendError) {
-          console.warn("Backend not available, using mock data:", backendError);
-          
+          console.warn("Backend not available or polling failed, using mock data:", backendError);
           // Fallback to mock data for demo
           result = generateMockAnalysis(resumeText, jobDescription);
         }
@@ -237,6 +221,7 @@ const SimulationLoader = ({ resumeText, jobDescription, onComplete }: Simulation
         // Wait for all agents to "complete" before showing results
         setTimeout(() => {
           setIsAnalyzing(false);
+          localStorage.setItem('latest_analysis_result', JSON.stringify(result));
           onComplete(result);
         }, Math.max(2000, (agents.length * 1500) - (Date.now() - performance.now())));
 

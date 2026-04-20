@@ -23,7 +23,15 @@ const Results = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const data = location.state?.result as AnalysisResult | undefined;
+  const persisted = (() => {
+    try {
+      const raw = localStorage.getItem('latest_analysis_result');
+      return raw ? JSON.parse(raw) as AnalysisResult : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
+  const data = (location.state?.result as AnalysisResult | undefined) || persisted;
   const weeklyHours = (location.state?.weeklyHours as number) ?? 20;
   const resumeOnly = location.state?.resumeOnly === true; // Check if this is resume-only mode
 
